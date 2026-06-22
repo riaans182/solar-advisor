@@ -1,0 +1,19 @@
+[importlinter]
+root_package = solar_advisor
+include_external_packages = true
+
+[importlinter:contract:engine-is-pure]
+name = engine must not import I/O, network, or LLM layers
+type = forbidden
+source_modules =
+    solar_advisor.engine
+forbidden_modules =
+    solar_advisor.ingest
+    solar_advisor.storage
+    solar_advisor.explain
+    solar_advisor.forecast
+    solar_advisor.api
+    aiomqtt
+    sqlite3
+    anthropic
+allow_indirect_imports = false
