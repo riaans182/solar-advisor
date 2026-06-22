@@ -1,0 +1,7 @@
+sa_dump.txt
+__pycache__/
+*.pyc
+.env
+node_modules/
+dist/
+.venv/

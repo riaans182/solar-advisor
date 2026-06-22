@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__homeassistant__list_devices",
+      "mcp__homeassistant__search_tools",
+      "mcp__homeassistant__states_control",
+      "Bash(git init *)",
+      "Bash(git config *)",
+      "Bash(git add *)",
+      "Bash(git commit -q -m ' *)"
+    ]
+  }
+}
