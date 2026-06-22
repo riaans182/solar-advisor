@@ -1,0 +1,16 @@
+services:
+  collector:
+    build: .
+    command: python -m solar_advisor.collector
+    environment:
+      SA_MQTT_HOST: ${SA_MQTT_HOST:?set in .env}
+      SA_MQTT_PORT: ${SA_MQTT_PORT:-1883}
+      SA_MQTT_USER: ${SA_MQTT_USER:-}
+      SA_MQTT_PASS: ${SA_MQTT_PASS:-}
+      SA_DB_PATH: /data/solar_advisor.db
+    volumes:
+      - sa_data:/data
+    restart: unless-stopped
+
+volumes:
+  sa_data:
