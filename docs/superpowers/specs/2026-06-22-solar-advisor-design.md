@@ -24,14 +24,25 @@ proprietary code, no employer IP.
    each slot does, what it likely costs, and what to change and why.
 4. A single **cost ↔ resilience** slider that re-runs the engine and changes the
    recommendation + explanation.
+5. Persist telemetry to a local time-series store and show **history/trend charts**
+   (PV, load, grid, SOC) in the dashboard. The store is also what the engine's
+   capacity/consumption estimators read from.
+
+**Portability stance (this is a public portfolio repo):**
+The MVP targets and is tested against *one* real system (single Deye/SunSynk, single
+phase — §2). But it is architected so a different inverter is an **adapter + topic-map
+config** addition, not a rewrite: the engine and dashboard consume a vendor-neutral
+normalized model (§4), and all SolarAssistant/Deye-specific topic knowledge lives in a
+data-driven source adapter (§3.1). We do not *claim or test* multi-inverter / three-phase
+support — we just don't hardcode anything that blocks it.
 
 **Non-goals (MVP):**
 - No writes to the inverter, ever (advisory-only; see §7).
-- No multi-inverter / three-phase support (the target system is single-inverter,
-  single-phase — see §2). The data model leaves room but we do not build for it.
+- No three-phase or multi-inverter *aggregation logic* (untestable without the hardware).
+  Architected-for, not built (see portability stance above).
 - No REST/WebSocket ingest (MQTT covers everything we need; see §3).
-- No historical database / long-term analytics beyond what the engine needs. In-memory
-  rolling state for MVP.
+- No full analytics suite — MVP persistence is telemetry capture + downsampling + a few
+  history charts, not reports/forecasting dashboards.
 
 ---
 
@@ -42,9 +53,13 @@ Confirmed from a live `mosquitto_sub -v -t '#'` dump of the user's broker.
 - **Inverter:** Deye/SunSynk/Sol-Ark, serial `2206074003`, **single inverter, single
   phase** (one `grid_voltage` ≈ 226 V, one AC output). MQTT root namespace
   `solar_assistant/`.
-- **Battery:** ~51.2 V nominal LFP (absorption 53.0 V, float 52.5 V). No usable-capacity
-  entity is published → capacity must be estimated (§5.2). BMS battery temperature read
-  0.0 in the sample (may be absent/unreliable — treat as optional).
+- **Battery:** 3 × Dyness 5 kWh = **15 kWh nominal**, ~51.2 V LFP (absorption 53.0 V,
+  float 52.5 V). No usable-capacity entity is published; nominal is user-supplied and
+  *usable* kWh is refined from telemetry (§5.2). BMS battery temperature read 0.0 in the
+  sample (may be absent/unreliable — treat as optional).
+- **PV array:** 10 × 500 W = **5 kWp nominal** (user-supplied). Observed clear-sky peak is
+  used as a real-world cross-check (measured peak is typically below nameplate due to
+  orientation/derating).
 - **Settings of interest:** `max_charge_current=150 A`, `max_grid_charge_current=71 A`,
   `max_discharge_current=150 A`, `output_shutdown_capacity=20 %` (hard floor),
   `stop_battery_discharge_capacity=25 %`, `work_mode=Zero export to CT`,
@@ -61,7 +76,8 @@ Confirmed from a live `mosquitto_sub -v -t '#'` dump of the user's broker.
 | Bucket | Parameters |
 |---|---|
 | **READ** (from MQTT) | Inverter identity/phase; SOC, battery V/I/power; PV power (+2 strings); grid import/export power + energy counters; load power (total/essential/non-essential); max charge/discharge/grid-charge currents; SOC floor (`output_shutdown_capacity`, `stop_battery_discharge_capacity`); full 6-slot schedule; work mode; energy pattern |
-| **ESTIMATE** (from telemetry history, show confidence, user-correctable) | Usable battery kWh (from `battery_energy_in/out` counters over a cycle); PV array kWp (from peak clear-sky generation); typical daily consumption kWh (from `load_energy`); panel orientation (rough, optional, low confidence) |
+| **KNOWN** (user-supplied, telemetry cross-checks) | Battery nominal 15 kWh (3 × Dyness 5 kWh); PV 5 kWp (10 × 500 W) |
+| **ESTIMATE/REFINE** (from telemetry history, show confidence, user-correctable) | *Usable* battery kWh (from `battery_energy_in/out` over a cycle, vs 15 kWh nominal and the SOC floor); typical daily consumption kWh (from `load_energy`); observed clear-sky PV peak (cross-check vs 5 kWp); panel orientation (rough, optional, low confidence) |
 | **ASK-ME** (cannot come from inverter) | Flat tariff: energy rate (R/kWh) + monthly fixed charge (R); backup priorities/windows beyond "hold reserve for essential bus"; objective slider default (BALANCED) |
 
 ---
@@ -76,6 +92,15 @@ Confirmed from a live `mosquitto_sub -v -t '#'` dump of the user's broker.
 
 **Ingest filter:** subscribe to `solar_assistant/#` only. The broker also carries
 unrelated Frigate/camera binary topics; everything outside `solar_assistant/` is ignored.
+
+### 3.1 Source adapter & portability
+All inverter-specific knowledge lives in a **source adapter** behind a `TelemetrySource`
+interface. The Deye/SolarAssistant adapter is driven by a declarative **topic-map config**
+(field → topic → unit/transform), not hardcoded strings — the tables below are that
+config expressed in prose. The adapter's only job is to turn raw MQTT messages into the
+vendor-neutral normalized model (§4). Adding a different inverter later = write a new
+adapter (or a new topic-map) that emits the same normalized model; the engine, explain
+layer, storage, and dashboard need no changes. MVP ships and tests only the Deye adapter.
 
 **Topic → field mapping (telemetry):**
 
@@ -143,12 +168,16 @@ unit-testable and provably correct, and it is the project's centrepiece.
 - `optimize.py` — given (tariff, battery limits, solar forecast, load profile, objective
   scalar), produce a **recommended** schedule + per-slot rationale + scores.
 
-### 5.2 Battery capacity estimation
-No capacity entity is published. Estimate usable kWh by integrating `battery_energy_out`
-between a high-SOC and low-SOC point of an observed discharge (or `battery_energy_in` over
-a charge), normalised by the SOC delta. Report value **with a confidence figure**; allow
-user override. Until an estimate exists, the engine uses the user-provided/override value
-or flags "insufficient data".
+### 5.2 Battery capacity & consumption estimation
+Nominal capacity is **known: 15 kWh** (3 × Dyness 5 kWh). No capacity entity is published,
+so *usable* kWh is **refined** from history in the storage layer (§9): integrate
+`battery_energy_out` between a high-SOC and low-SOC point of an observed discharge (or
+`battery_energy_in` over a charge), normalised by the SOC delta, and compare against the
+15 kWh nominal and the SOC floor. Typical daily consumption is estimated from `load_energy`
+history. Report estimates **with a confidence figure**; allow user override. Until enough
+history exists, the engine uses the known nominal / user-provided values and flags
+"refining". Estimation runs as an I/O-bound service *outside* the pure engine (it reads
+storage) and passes its results in as plain inputs — the engine itself stays pure.
 
 ### 5.3 Objective: the cost ↔ resilience scalar
 A single scalar `objective ∈ [0,1]` (0 = pure cost, 1 = pure resilience), default 0.5.
@@ -224,22 +253,41 @@ server-side only, rate-limited, with an env kill-switch. The key never reaches t
 
 ---
 
-## 9. Solar forecast
+## 9. Storage & history
 
-The engine takes a `SolarForecast` interface. Default adapter **reuses the user's existing
-Home Assistant Forecast.Solar feed** (`sensor.energy_production_today/tomorrow`,
-`power_production_now`) to avoid a second external dependency. An alternate adapter
-(direct Forecast.Solar / Open-Meteo, lat -33.92 / lon 18.42, Cape Town) can be added
-behind the same interface. Forecast source is config.
+A `storage` module behind a `TelemetryStore` interface persists the normalized telemetry
+stream locally. It serves three consumers: the estimation service (§5.2), the dashboard
+history/trend charts, and bill projection (month-to-date import).
+
+- **MVP backend:** SQLite (single file, container-friendly, zero-ops on Proxmox).
+  Swappable later for a dedicated time-series DB (InfluxDB/TimescaleDB) behind the same
+  interface if retention/throughput demand it.
+- **Write policy:** downsample on ingest (e.g. persist at ~10 s, or on meaningful change)
+  to keep the DB small; raw cadence is not retained.
+- **Retention:** configurable — keep raw/fine-grained for N days, hourly/daily rollups
+  longer. Rollups are what the trend charts and estimators read for long ranges.
+- The store is read-only from the engine's perspective: the engine never touches it
+  directly; the estimation service and API read it and pass plain values inward.
+
+## 10. Solar forecast
+
+The engine takes a solar forecast as a plain **input**; a `SolarForecast` adapter (I/O,
+outside the engine) fetches it. Default adapter **reuses the user's existing Home Assistant
+Forecast.Solar feed** (`sensor.energy_production_today/tomorrow`, `power_production_now`)
+to avoid a second external dependency. An alternate adapter (direct Forecast.Solar /
+Open-Meteo, lat -33.92 / lon 18.42, Cape Town) can be added behind the same interface.
+Forecast source is config.
 
 ---
 
-## 10. Repo structure
+## 11. Repo structure
 
 ```
 solar-advisor/
 ├─ backend/
-│  ├─ ingest/      # MQTT client → normalized Telemetry + Config/Schedule snapshots. READ-ONLY.
+│  ├─ ingest/      # TelemetrySource interface + Deye/SA adapter (topic-map config). READ-ONLY.
+│  ├─ storage/     # TelemetryStore interface + SQLite impl; downsampling, rollups, retention
+│  ├─ estimation/  # I/O service: reads storage → usable kWh, daily kWh (feeds engine inputs)
 │  ├─ engine/      # DETERMINISTIC. Pure functions. No I/O, no network, no LLM.
 │  │  ├─ tariff.py
 │  │  ├─ battery.py
@@ -249,16 +297,17 @@ solar-advisor/
 │  │  ├─ context.py
 │  │  ├─ prompt.py
 │  │  └─ guard.py
+│  ├─ forecast/    # SolarForecast interface + HA Forecast.Solar adapter (+ alt adapters)
 │  ├─ api/         # FastAPI; key/rate-limit/kill-switch server-side only
 │  └─ tests/       # heavy coverage on engine/ specifically
-├─ frontend/       # Vue 3 + Vite + TS-strict
+├─ frontend/       # Vue 3 + Vite + TS-strict (dashboard, Explain panel, slider, history charts)
 ├─ docker-compose.yml
 └─ README.md       # portfolio-grade from commit 1
 ```
 
 ---
 
-## 11. Stack & conventions
+## 12. Stack & conventions
 
 - **Backend:** Python + FastAPI; MQTT (paho/asyncio-mqtt); Anthropic SDK server-side only.
 - **Frontend:** Vue 3 + Vite + TypeScript (strict).
@@ -269,20 +318,22 @@ solar-advisor/
 
 ---
 
-## 12. Staged build plan & definition of done
+## 13. Staged build plan & definition of done
 
 | Stage | Deliverable | Definition of done |
 |---|---|---|
 | **0. Conventions** | ruff + mypy(strict), ESLint + Prettier + TS-strict, import-linter contract, CI, Docker Compose skeleton, README skeleton | `make lint test` green on empty scaffold; boundary contract enforced in CI |
-| **1. Ingest** | MQTT client → normalized Telemetry/Schedule/Config from the real topics; month-to-date grid-import accumulator | Live values match SA UI; reconnects cleanly; **publish-blocked test passes** |
-| **2. Engine core** | `FlatRateTariff`, battery model, schedule evaluator | Unit-tested against hand-computed fixtures incl. month-boundary + SOC-floor edges |
-| **3. Optimizer + slider** | objective scalar → recommended schedule + per-slot rationale + scores | Slider sweep produces monotonic, sane outputs; fully tested |
-| **4. Explain layer** | ExplanationContext DTO, Claude integration, provenance guard | Guard rejects injected fake numbers in tests; explanations reference only engine values |
-| **5. Dashboard** | Vue dashboard + Explain & Suggest panel + slider + advisory disclaimer | Reads cleaner than stock UI; slider re-runs engine live; disclaimer visible |
+| **1. Ingest** | `TelemetrySource` + Deye/SA adapter (topic-map config) → normalized Telemetry/Schedule/Config; month-to-date grid-import accumulator | Live values match SA UI; reconnects cleanly; **publish-blocked test passes** |
+| **2. Storage** | `TelemetryStore` + SQLite; downsampling, rollups, retention | Telemetry persists; rollups queryable; retention prunes correctly |
+| **3. Engine core** | `FlatRateTariff`, battery model (15 kWh nominal + usable refinement), schedule evaluator | Unit-tested against hand-computed fixtures incl. month-boundary + SOC-floor edges |
+| **4. Estimation** | service reads storage → usable kWh + daily kWh with confidence | Estimates within tolerance on a known fixture cycle; user override respected |
+| **5. Optimizer + slider** | objective scalar → recommended schedule + per-slot rationale + scores | Slider sweep produces monotonic, sane outputs; fully tested |
+| **6. Explain layer** | ExplanationContext DTO, Claude integration, provenance guard | Guard rejects injected fake numbers in tests; explanations reference only engine values |
+| **7. Dashboard** | Vue dashboard + Explain & Suggest panel + slider + history/trend charts + advisory disclaimer | Reads cleaner than stock UI; slider re-runs engine live; charts render from storage; disclaimer visible |
 
 ---
 
-## 13. Open config values still needed from the user
+## 14. Open config values still needed from the user
 
 1. **Flat tariff numbers:** energy rate (R/kWh) + monthly fixed charge (R). Can be
    reverse-engineered from a recent prepaid slip (e.g. "R1000 → 137.8 units").
@@ -290,4 +341,6 @@ solar-advisor/
    specific circuits / guaranteed time-windows? (Cape Town load-shedding context.)
 3. **Slider default:** BALANCED (0.5) unless specified.
 
-These are config, not architecture — they do not block stages 0–2.
+These are config, not architecture. They never block *building* a stage (the engine and
+its tests run on fixture values); they are only needed for accurate *live* output. PV
+(5 kWp) and battery (15 kWh nominal) are now supplied and no longer open.
