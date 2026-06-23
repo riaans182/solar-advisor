@@ -24,6 +24,7 @@ class ReadOnlyMqttClient:
     ) -> None:
         self._host = host
         self._port = port
+        # Empty env var -> no auth (None).
         self._username = username or None
         self._password = password or None
         self.topic_filter = "solar_assistant/#"
@@ -39,9 +40,15 @@ class ReadOnlyMqttClient:
             await client.subscribe(self.topic_filter)
             async for message in client.messages:
                 topic = str(message.topic)
-                assert_read_only(topic)  # never act on a write topic
+                # Defense-in-depth: reject a misrouted write echo before processing
+                # it. Publishing is structurally impossible here -- this client has
+                # no publish path -- so this guards only against acting on inbound
+                # write topics, not against us writing.
+                assert_read_only(topic)
                 payload = (
-                    message.payload.decode(errors="ignore")
+                    # errors="replace": surface corrupt payloads (they still fail
+                    # float() downstream and are ignored) rather than silently drop.
+                    message.payload.decode(errors="replace")
                     if isinstance(message.payload, bytes)
                     else str(message.payload)
                 )
