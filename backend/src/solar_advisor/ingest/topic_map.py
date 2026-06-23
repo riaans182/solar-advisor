@@ -1,6 +1,8 @@
 # src/solar_advisor/ingest/topic_map.py
 from __future__ import annotations
 
+import math
+
 # Deye / SolarAssistant telemetry topics → normalized field name.
 # This dict is the entire vendor-specific surface for telemetry; a different
 # inverter is a new map emitting the same field names (spec §3.1).
@@ -28,6 +30,9 @@ def parse_value(topic: str, payload: str) -> tuple[str, float] | None:
     if field is None:
         return None
     try:
-        return field, float(payload)
+        result = float(payload)
     except ValueError:
         return None
+    if not math.isfinite(result):
+        return None
+    return field, result

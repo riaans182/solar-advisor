@@ -1,4 +1,6 @@
 # tests/test_topic_map.py
+import pytest
+
 from solar_advisor.ingest.topic_map import TELEMETRY_TOPICS, parse_value
 
 
@@ -6,6 +8,11 @@ def test_known_telemetry_topic_maps_to_field_and_float():
     field, value = parse_value("solar_assistant/total/battery_state_of_charge/state", "64")
     assert field == "battery_soc"
     assert value == 64.0
+
+
+@pytest.mark.parametrize("payload", ["nan", "inf", "-inf", "NaN", "Infinity"])
+def test_non_finite_payload_returns_none(payload):
+    assert parse_value("solar_assistant/total/battery_state_of_charge/state", payload) is None
 
 
 def test_unknown_topic_returns_none():

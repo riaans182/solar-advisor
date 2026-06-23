@@ -10,7 +10,7 @@ from typing import Any
 class Slot:
     start: time
     end: time
-    target_soc: int
+    target_soc: int  # integer setpoint percentage (vs Telemetry.battery_soc, a measured float)
     grid_charge: bool
     gen_charge: bool
 
