@@ -21,8 +21,11 @@ def test_build_schedule_has_six_slots():
 def test_slot_fields_and_wraparound_end():
     slots = build_schedule(_raw())
     assert slots[0] == Slot(
-        start=time(0, 0), end=time(5, 0), target_soc=65,
-        grid_charge=True, gen_charge=False,
+        start=time(0, 0),
+        end=time(5, 0),
+        target_soc=65,
+        grid_charge=True,
+        gen_charge=False,
     )
     # Last slot wraps to the first slot's start.
     assert slots[5].start == time(21, 30)

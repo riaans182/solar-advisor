@@ -14,18 +14,18 @@ class Telemetry:
     """
 
     ts: datetime
-    battery_soc: float            # %
-    battery_power: float          # W (+ charging)
-    battery_voltage: float        # V
-    battery_current: float        # A
-    pv_power: float               # W
-    grid_power: float             # W (+ import)
-    load_power: float             # W
-    load_power_essential: float   # W
-    grid_energy_in: float         # kWh cumulative
-    grid_energy_out: float        # kWh cumulative
-    pv_energy: float              # kWh cumulative
-    load_energy: float            # kWh cumulative
-    battery_energy_in: float      # kWh cumulative
-    battery_energy_out: float     # kWh cumulative
+    battery_soc: float  # %
+    battery_power: float  # W (+ charging)
+    battery_voltage: float  # V
+    battery_current: float  # A
+    pv_power: float  # W
+    grid_power: float  # W (+ import)
+    load_power: float  # W
+    load_power_essential: float  # W
+    grid_energy_in: float  # kWh cumulative
+    grid_energy_out: float  # kWh cumulative
+    pv_energy: float  # kWh cumulative
+    load_energy: float  # kWh cumulative
+    battery_energy_in: float  # kWh cumulative
+    battery_energy_out: float  # kWh cumulative
     month_to_date_grid_import_kwh: float  # derived (Task 6)
