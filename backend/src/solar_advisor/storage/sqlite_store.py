@@ -12,9 +12,18 @@ _FIELDS = [f.name for f in fields(Telemetry) if f.name != "ts"]
 
 
 class SqliteTelemetryStore:
-    """Wide-row telemetry store with ingest-time downsampling and retention pruning."""
+    """Wide-row telemetry store with ingest-time downsampling and retention pruning.
+
+    Timestamp contract: ``Telemetry.ts`` must be timezone-consistent across every
+    snapshot handed to a single store instance (the collector always stamps
+    ``datetime.now(UTC)``). Mixing naive and tz-aware timestamps in one store would
+    break both the downsample subtraction (``TypeError`` on ``snapshot.ts - last``)
+    and the ISO-string range ordering used by ``query_range``/``prune_before``.
+    """
 
     def __init__(self, path: Path | str, min_interval: timedelta = timedelta(seconds=10)) -> None:
+        # Single-threaded access assumed: sqlite3's default check_same_thread=True
+        # rejects cross-thread use. The async collector runs on one thread.
         self._conn = sqlite3.connect(str(path))
         self._min_interval = min_interval
         self._last_saved_ts: datetime | None = None
@@ -25,6 +34,8 @@ class SqliteTelemetryStore:
     def save(self, snapshot: Telemetry) -> bool:
         if (
             self._last_saved_ts is not None
+            # An out-of-order (older) sample yields a negative delta < min_interval,
+            # so it is also dropped here.
             and snapshot.ts - self._last_saved_ts < self._min_interval
         ):
             return False
@@ -56,3 +67,7 @@ class SqliteTelemetryStore:
         cur = self._conn.execute("DELETE FROM telemetry WHERE ts < ?", (cutoff.isoformat(),))
         self._conn.commit()
         return cur.rowcount
+
+    def close(self) -> None:
+        """Close the underlying connection for graceful shutdown / test teardown."""
+        self._conn.close()
