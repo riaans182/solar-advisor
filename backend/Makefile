@@ -1,19 +1,25 @@
 .PHONY: install lint typecheck contract test check
 
+# Self-contained: every target uses the project venv, so no PATH juggling is
+# needed. `make install` bootstraps the venv from the system python3.
+VENV := .venv
+BIN := $(VENV)/bin
+
 install:
-	python -m pip install -e ".[dev]"
+	python3 -m venv $(VENV)
+	$(BIN)/python -m pip install -e ".[dev]"
 
 lint:
-	ruff check src tests
-	ruff format --check src tests
+	$(BIN)/ruff check src tests
+	$(BIN)/ruff format --check src tests
 
 typecheck:
-	mypy
+	$(BIN)/mypy
 
 contract:
-	lint-imports --config .importlinter
+	$(BIN)/lint-imports --config .importlinter
 
 test:
-	pytest -q
+	$(BIN)/pytest -q
 
 check: lint typecheck contract test
