@@ -10,9 +10,15 @@ from solar_advisor.storage.store import TelemetryStore
 
 @dataclass(frozen=True, slots=True)
 class EstimatedParameters:
+    """Estimated inverter parameters.
+
+    `daily_consumption_kwh` is only meaningful when `daily_consumption_confidence > 0`;
+    with insufficient data it is reported as 0.0 (a physically-wrong "zero load"), so
+    callers MUST gate on `daily_consumption_confidence` before using it."""
+
     usable_kwh: float
     usable_kwh_confidence: float  # 0..1
-    daily_consumption_kwh: float
+    daily_consumption_kwh: float  # meaningful only when daily_consumption_confidence > 0
     daily_consumption_confidence: float  # 0..1
 
 
@@ -26,6 +32,10 @@ class ParameterEstimator:
         self._nominal_kwh = nominal_kwh
 
     def estimate(self, start: datetime, end: datetime) -> EstimatedParameters:
+        """Estimate parameters from stored telemetry over [start, end].
+
+        Note: `daily_consumption_kwh` in the result is only meaningful when
+        `daily_consumption_confidence > 0`; callers MUST gate on that confidence."""
         rows = self._store.query_range(start, end)
         usable_kwh, usable_conf = self._estimate_capacity(rows)
         daily_kwh, daily_conf = self._estimate_daily_consumption(rows)
@@ -37,22 +47,37 @@ class ParameterEstimator:
         )
 
     def _estimate_capacity(self, rows: list[Telemetry]) -> tuple[float, float]:
-        """Capacity = battery_energy_out over a falling-SOC run / fractional SOC drop.
-        Scans for the largest SOC span and uses the energy_out delta across it."""
+        """Capacity = battery_energy_out delta over a single discharge run / fractional
+        SOC drop. Estimates over the largest contiguous monotonically falling-SOC run
+        (NOT the global SOC max/min) so the SOC span and the energy_out delta measure the
+        SAME discharge; a window with a recharge between discharges would otherwise sum
+        all discharge energy against one span and inflate the estimate.
+        Relies on `query_range` returning rows in ascending `ts` order."""
         if len(rows) < 2:
             return self._nominal_kwh, 0.0
-        soc_hi = max(rows, key=lambda r: r.battery_soc)
-        soc_lo = min(rows, key=lambda r: r.battery_soc)
-        soc_span = soc_hi.battery_soc - soc_lo.battery_soc
-        energy_out = soc_lo.battery_energy_out - soc_hi.battery_energy_out
-        if soc_span <= 0 or energy_out <= 0:
+        # Walk contiguous segments where battery_soc is non-increasing and pick the run
+        # with the largest SOC span (ties: largest energy_out delta).
+        best_span = 0.0
+        best_energy_out = 0.0
+        run_start = rows[0]
+        for prev, curr in zip(rows, rows[1:], strict=False):
+            if curr.battery_soc > prev.battery_soc:
+                run_start = curr  # SOC rose => recharge; start a fresh run
+                continue
+            span = run_start.battery_soc - curr.battery_soc
+            energy_out = curr.battery_energy_out - run_start.battery_energy_out
+            if span > best_span or (span == best_span and energy_out > best_energy_out):
+                best_span = span
+                best_energy_out = energy_out
+        if best_span <= 0 or best_energy_out <= 0:
             return self._nominal_kwh, 0.0
-        usable_kwh = energy_out / (soc_span / 100.0)
-        confidence = min(1.0, soc_span / 80.0)  # an ~80% swing => full confidence
+        usable_kwh = best_energy_out / (best_span / 100.0)
+        confidence = min(1.0, best_span / 80.0)  # an ~80% swing => full confidence
         return usable_kwh, confidence
 
     def _estimate_daily_consumption(self, rows: list[Telemetry]) -> tuple[float, float]:
-        """Daily kWh = load_energy delta normalised to a per-day rate."""
+        """Daily kWh = load_energy delta normalised to a per-day rate.
+        Relies on `query_range` returning rows in ascending `ts` order."""
         if len(rows) < 2:
             return 0.0, 0.0
         first, last = rows[0], rows[-1]
