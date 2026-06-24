@@ -12,5 +12,23 @@ services:
       - sa_data:/data
     restart: unless-stopped
 
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      SA_MQTT_HOST: ${SA_MQTT_HOST:?set in .env}
+      SA_MQTT_PORT: ${SA_MQTT_PORT:-1883}
+      SA_MQTT_USER: ${SA_MQTT_USER:-}
+      SA_MQTT_PASS: ${SA_MQTT_PASS:-}
+      SA_DB_PATH: /data/solar_advisor.db
+      SA_TARIFF_RATE: ${SA_TARIFF_RATE:-3.56}
+      SA_TARIFF_FIXED_CHARGE: ${SA_TARIFF_FIXED_CHARGE:-600}
+    ports:
+      - "8000:8000"
+    volumes:
+      - sa_data:/data
+    restart: unless-stopped
+
 volumes:
   sa_data:
