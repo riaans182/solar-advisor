@@ -18,6 +18,8 @@ class BatteryModel:
         return self.usable_kwh * soc_pct / 100.0
 
     def energy_between(self, soc_lo_pct: float, soc_hi_pct: float) -> float:
+        """Signed energy delta between two SOC levels: positive when
+        soc_hi_pct > soc_lo_pct; negative means a discharge."""
         return self.usable_kwh * (soc_hi_pct - soc_lo_pct) / 100.0
 
     @property

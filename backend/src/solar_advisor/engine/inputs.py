@@ -25,7 +25,9 @@ class LoadProfile:
 @dataclass(frozen=True, slots=True)
 class DaylightWindow:
     """Window over which PV is assumed to generate, used to allocate forecast PV
-    across schedule slots."""
+    across schedule slots.
+
+    Precondition: dawn < dusk (a zero/inverted window means no daylight)."""
 
     dawn: time
     dusk: time

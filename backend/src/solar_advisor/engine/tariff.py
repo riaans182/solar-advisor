@@ -26,4 +26,6 @@ class FlatRateTariff:
         return self.energy_rate
 
     def monthly_cost(self, import_kwh: float, days_in_month: int) -> float:
+        # days_in_month is the protocol seam for future partial-month
+        # fixed-charge proration; the flat impl ignores it.
         return self.monthly_fixed_charge + import_kwh * self.energy_rate
