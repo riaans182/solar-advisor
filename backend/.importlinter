@@ -10,6 +10,7 @@ source_modules =
 forbidden_modules =
     solar_advisor.ingest
     solar_advisor.storage
+    solar_advisor.estimation
     solar_advisor.explain
     solar_advisor.forecast
     solar_advisor.api
