@@ -70,7 +70,15 @@ async def run_live_ingest(
                         if isinstance(message.payload, bytes)
                         else str(message.payload)
                     )
-                    state.handle(datetime.now(UTC), str(message.topic), payload)
+                    topic = str(message.topic)
+                    try:
+                        state.handle(datetime.now(UTC), topic, payload)
+                    except Exception as exc:
+                        print(
+                            f"live-ingest: skipping bad message on {topic}: {exc}",
+                            file=sys.stderr,
+                        )
+                        continue
                     backoff = 1.0
         except aiomqtt.MqttError as exc:
             print(f"live-ingest: connection lost ({exc}); retry in {backoff:.0f}s", file=sys.stderr)

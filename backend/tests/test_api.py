@@ -89,3 +89,24 @@ def test_dashboard_returns_engine_output_with_disclaimer():
 def test_dashboard_503_when_state_not_ready():
     resp = _client(LiveState(store=None)).get("/api/dashboard")
     assert resp.status_code == 503
+
+
+def test_two_apps_keep_independent_state():
+    """Two apps built in the same process must not clobber each other's state.
+    With the old module-global _STATE, building app B overwrote app A's state
+    and A's dashboard would 503. Per-app state via app.state fixes this."""
+    svc = RecommendationService(
+        config=_config(), estimator=_FakeEstimator(), forecast=_FakeForecast()
+    )
+
+    app_a = build_app(state=_ready_state())
+    app_a.dependency_overrides[get_service] = lambda: svc
+
+    app_b = build_app(state=LiveState(store=None))
+    app_b.dependency_overrides[get_service] = lambda: svc
+
+    client_a = TestClient(app_a)
+    client_b = TestClient(app_b)
+
+    assert client_a.get("/api/dashboard").status_code == 200
+    assert client_b.get("/api/dashboard").status_code == 503

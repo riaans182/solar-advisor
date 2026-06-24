@@ -5,7 +5,7 @@ import asyncio
 import contextlib
 from collections.abc import AsyncIterator
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from solar_advisor.api.schemas import DashboardView, RecommendationView, SlotView
@@ -16,21 +16,19 @@ from solar_advisor.ingest.live import LiveState, run_live_ingest
 from solar_advisor.services.recommendation import DashboardData, RecommendationService
 from solar_advisor.storage.sqlite_store import SqliteTelemetryStore
 
-# Module-level handles set in the lifespan; overridable in tests.
-_STATE: LiveState | None = None
-_SERVICE: RecommendationService | None = None
 
-
-def get_service() -> RecommendationService:
-    if _SERVICE is None:
-        raise HTTPException(status_code=500, detail="service not initialised")
-    return _SERVICE
-
-
-def get_state() -> LiveState:
-    if _STATE is None:
+def get_state(request: Request) -> LiveState:
+    state = getattr(request.app.state, "live", None)
+    if not isinstance(state, LiveState):
         raise HTTPException(status_code=500, detail="state not initialised")
-    return _STATE
+    return state
+
+
+def get_service(request: Request) -> RecommendationService:
+    service = getattr(request.app.state, "service", None)
+    if not isinstance(service, RecommendationService):
+        raise HTTPException(status_code=500, detail="service not initialised")
+    return service
 
 
 def _to_view(data: DashboardData) -> DashboardView:
@@ -106,24 +104,27 @@ def build_app(state: LiveState, config: AppConfig | None = None) -> FastAPI:
         allow_headers=["*"],
     )
 
-    global _STATE
-    _STATE = state
+    app.state.live = state
 
     @app.get("/api/health")
-    def health() -> dict[str, object]:
+    def health(state: LiveState = Depends(get_state)) -> dict[str, object]:  # noqa: B008
         return {
             "status": "ok",
             "telemetry_ready": state.telemetry is not None,
             "schedule_ready": state.schedule is not None,
+            "telemetry_ts": (
+                state.telemetry.ts.isoformat() if state.telemetry is not None else None
+            ),
         }
 
     @app.get("/api/dashboard", response_model=DashboardView)
     def dashboard(
         objective: float | None = Query(default=None, ge=0.0, le=1.0),
         service: RecommendationService = Depends(get_service),  # noqa: B008
+        state: LiveState = Depends(get_state),  # noqa: B008
     ) -> DashboardView:
         try:
-            data = service.build(get_state(), objective=objective)
+            data = service.build(state, objective=objective)
         except LookupError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         return _to_view(data)
@@ -133,7 +134,6 @@ def build_app(state: LiveState, config: AppConfig | None = None) -> FastAPI:
 
 def create_production_app() -> FastAPI:
     """Entry point for uvicorn: wires real config, store, estimator, forecast."""
-    global _SERVICE
     config = load_config()
     store = SqliteTelemetryStore(config.db_path)
     state = LiveState(store=store)
@@ -141,5 +141,7 @@ def create_production_app() -> FastAPI:
     forecast = StaticForecastProvider(
         today_kwh=config.forecast_today_kwh, tomorrow_kwh=config.forecast_tomorrow_kwh
     )
-    _SERVICE = RecommendationService(config=config, estimator=estimator, forecast=forecast)
-    return build_app(state=state, config=config)
+    service = RecommendationService(config=config, estimator=estimator, forecast=forecast)
+    app = build_app(state=state, config=config)
+    app.state.service = service
+    return app
