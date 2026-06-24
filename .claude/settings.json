@@ -1,5 +1,6 @@
 {
   "permissions": {
+    "defaultMode": "auto",
     "allow": [
       "mcp__homeassistant__list_devices",
       "mcp__homeassistant__search_tools",
