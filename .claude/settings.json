@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__homeassistant__list_devices",
+      "mcp__homeassistant__search_tools",
+
+      "Edit(backend/**)",
+      "Write(backend/**)",
+      "Edit(docs/**)",
+      "Write(docs/**)",
+      "Edit(.claude/**)",
+      "Write(.claude/**)",
+
+      "Bash(make *)",
+      "Bash(.venv/bin/pytest *)",
+      "Bash(.venv/bin/ruff *)",
+      "Bash(.venv/bin/mypy *)",
+      "Bash(.venv/bin/lint-imports *)",
+
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git checkout *)",
+      "Bash(git switch *)",
+      "Bash(git restore *)",
+      "Bash(git merge *)",
+      "Bash(git worktree *)",
+      "Bash(git config *)",
+      "Bash(git init*)",
+
+      "Bash(mkdir *)",
+      "Bash(touch *)"
+    ]
+  }
+}
