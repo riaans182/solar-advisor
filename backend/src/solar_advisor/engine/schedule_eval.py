@@ -62,6 +62,12 @@ def assess_schedule(
     allocated across slots in proportion to their daylight overlap; load is served
     solar-first, then battery down to the floor, then grid. Grid charging happens
     only in a slot whose grid_charge flag is set, up to target_soc, capped by power.
+
+    Notes:
+    - The ``gen_charge`` slot flag is out of scope for the MVP; generator charging
+      is not modelled.
+    - Slots are assumed chronological and non-degenerate (distinct start/end), as
+      produced by ``build_schedule``.
     """
     rate = tariff.marginal_rate(month_to_date_import_kwh)
     total_overlap = sum(_overlap_hours(s, daylight) for s in schedule)
@@ -79,6 +85,7 @@ def assess_schedule(
         )
         net = solar_kwh - load_kwh
         grid_import = 0.0
+        from_batt = 0.0
 
         if net >= 0:
             soc_kwh = min(battery.usable_kwh, soc_kwh + net)
@@ -100,7 +107,7 @@ def assess_schedule(
             behavior = SlotBehavior.GRID_CHARGING
         elif net > 0:
             behavior = SlotBehavior.SOLAR_CHARGING
-        elif net < 0:
+        elif from_batt > 0:
             behavior = SlotBehavior.DISCHARGING
         else:
             behavior = SlotBehavior.HOLDING

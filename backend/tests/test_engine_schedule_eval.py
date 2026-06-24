@@ -80,3 +80,21 @@ def test_daytime_slot_with_strong_sun_charges_from_solar():
     day = out[1]
     assert day.behavior is SlotBehavior.SOLAR_CHARGING
     assert day.grid_import_kwh == 0.0
+
+
+def test_slot_at_floor_with_deficit_holds_not_discharges():
+    slot = Slot(
+        start=time(0, 0), end=time(6, 0), target_soc=20, grid_charge=False, gen_charge=False
+    )
+    out = assess_schedule(
+        [slot],
+        _battery(),
+        _tariff(),
+        SolarForecast(expected_pv_kwh_today=0.0, expected_pv_kwh_tomorrow=0.0),
+        LoadProfile(daily_kwh=24.0, essential_power_w=500.0),
+        _daylight(),
+        start_soc=20.0,
+        month_to_date_import_kwh=0.0,
+    )
+    assert out[0].behavior is SlotBehavior.HOLDING
+    assert out[0].grid_import_kwh > 0
