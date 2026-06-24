@@ -20,6 +20,12 @@ def _parse_hhmm(value: str) -> time:
     return time(int(hh), int(mm))
 
 
+def _coerce_bool(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() == "true"
+
+
 def build_schedule(raw: dict[str, dict[int, Any]]) -> list[Slot]:
     """Assemble the 6-slot TOU schedule. Each slot ends where the next begins;
     slot 6 wraps to slot 1's start."""
@@ -32,8 +38,8 @@ def build_schedule(raw: dict[str, dict[int, Any]]) -> list[Slot]:
                 start=starts[i],
                 end=starts[nxt],
                 target_soc=int(raw["capacity_point"][i]),
-                grid_charge=bool(raw["grid_charge_point"][i]),
-                gen_charge=bool(raw["gen_charge_point"][i]),
+                grid_charge=_coerce_bool(raw["grid_charge_point"][i]),
+                gen_charge=_coerce_bool(raw["gen_charge_point"][i]),
             )
         )
     return slots

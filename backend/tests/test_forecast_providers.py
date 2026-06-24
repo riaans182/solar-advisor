@@ -1,5 +1,6 @@
 # tests/test_forecast_providers.py
 import httpx
+import pytest
 
 from solar_advisor.engine.inputs import SolarForecast
 from solar_advisor.forecast.ha_provider import HomeAssistantForecastProvider
@@ -30,3 +31,14 @@ def test_ha_provider_reads_forecast_solar_sensors():
     fc = p.fetch()
     assert fc.expected_pv_kwh_today == 12.5
     assert fc.expected_pv_kwh_tomorrow == 9.0
+
+
+def test_ha_provider_unknown_state_raises_clear_value_error():
+    # Forecast.Solar's tomorrow sensor is commonly "unknown" overnight.
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"state": "unknown"})
+
+    client = httpx.Client(transport=httpx.MockTransport(handler), base_url="http://ha.local:8123")
+    p = HomeAssistantForecastProvider(client=client, token="x")
+    with pytest.raises(ValueError, match="sensor.energy_production_today"):
+        p.fetch()

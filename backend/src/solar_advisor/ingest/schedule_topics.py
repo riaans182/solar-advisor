@@ -7,6 +7,10 @@ import re
 # for the TOU schedule lives here (spec §3.1).
 SCHEDULE_FIELDS = ("time_point", "capacity_point", "grid_charge_point", "gen_charge_point")
 
+# The TOU schedule has six per-slot points (i = 1..6). Single source of truth
+# for the completeness check.
+SLOT_COUNT = 6
+
 _PATTERN = re.compile(
     r"^solar_assistant/inverter_1/(time_point|capacity_point|grid_charge_point|gen_charge_point)_([1-6])/state$"
 )

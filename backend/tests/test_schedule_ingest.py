@@ -60,3 +60,46 @@ def test_accumulator_emits_schedule_once_complete():
 def test_accumulator_returns_none_until_complete():
     acc = ScheduleAccumulator()
     assert acc.ingest("solar_assistant/inverter_1/time_point_1/state", "00:00") is None
+
+
+def _live_raw():
+    return {
+        "time_point": {1: "00:00", 2: "05:00", 3: "08:00", 4: "16:30", 5: "18:00", 6: "21:30"},
+        "capacity_point": {1: "65", 2: "65", 3: "90", 4: "95", 5: "75", 6: "65"},
+        "grid_charge_point": {1: "true", 2: "true", 3: "true", 4: "false", 5: "true", 6: "true"},
+        "gen_charge_point": {i: "false" for i in range(1, 7)},
+    }
+
+
+def _feed(acc, raw):
+    last = None
+    for field, slots in raw.items():
+        for i, val in slots.items():
+            last = acc.ingest(f"solar_assistant/inverter_1/{field}_{i}/state", val)
+    return last
+
+
+def test_malformed_payload_does_not_crash_and_degrades_to_none():
+    # A non-numeric capacity payload must not raise from ingest(); the schedule
+    # stays None even once all 24 slots are present. Once the bad value is
+    # overwritten with a valid one, a complete state emits a Schedule.
+    acc = ScheduleAccumulator()
+    raw = _live_raw()
+    raw["capacity_point"][1] = "abc"  # malformed
+    assert _feed(acc, raw) is None  # all slots present but unbuildable -> None
+
+    # Overwrite the bad value; the schedule now builds.
+    schedule = acc.ingest("solar_assistant/inverter_1/capacity_point_1/state", "65")
+    assert schedule is not None
+    assert schedule[0].target_soc == 65
+
+
+def test_accumulator_re_emits_on_edit():
+    # Once a full schedule has emitted, re-publishing one topic with a new value
+    # emits a fresh Schedule reflecting the change (not one-shot).
+    acc = ScheduleAccumulator()
+    assert _feed(acc, _live_raw()) is not None
+
+    updated = acc.ingest("solar_assistant/inverter_1/capacity_point_1/state", "80")
+    assert updated is not None
+    assert updated[0].target_soc == 80

@@ -35,3 +35,14 @@ def test_slot_fields_and_wraparound_end():
 def test_grid_charge_disabled_slot_detected():
     slots = build_schedule(_raw())
     assert slots[3].grid_charge is False  # 16:30 PV-peak slot
+
+
+def test_build_schedule_coerces_string_bools():
+    # The landmine: bool("false") is True. build_schedule must own typing and
+    # treat the string "false" as False, "true" as True.
+    raw = _raw()
+    raw["grid_charge_point"] = {i: "false" for i in range(1, 7)}
+    raw["gen_charge_point"] = {i: "true" for i in range(1, 7)}
+    slots = build_schedule(raw)
+    assert all(s.grid_charge is False for s in slots)
+    assert all(s.gen_charge is True for s in slots)
