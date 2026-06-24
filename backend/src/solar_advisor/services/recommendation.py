@@ -1,6 +1,7 @@
 # src/solar_advisor/services/recommendation.py
 from __future__ import annotations
 
+import calendar
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Protocol
@@ -62,7 +63,11 @@ class RecommendationService:
 
         est = self._estimator.estimate(telemetry.ts - timedelta(days=14), telemetry.ts)
         usable_kwh = est.usable_kwh or cfg.battery_nominal_kwh
-        daily_kwh = est.daily_consumption_kwh or 0.0
+        daily_kwh = (
+            est.daily_consumption_kwh
+            if est.daily_consumption_confidence > 0
+            else cfg.daily_consumption_kwh
+        )
 
         battery = BatteryModel(
             usable_kwh=usable_kwh,
@@ -87,6 +92,7 @@ class RecommendationService:
             start_soc=telemetry.battery_soc,
             month_to_date_import_kwh=telemetry.month_to_date_grid_import_kwh,
         )
+        days_in_month = calendar.monthrange(telemetry.ts.year, telemetry.ts.month)[1]
         rec = recommend(
             battery=battery,
             tariff=tariff,
@@ -95,7 +101,7 @@ class RecommendationService:
             objective=obj,
             current_soc=telemetry.battery_soc,
             month_to_date_import_kwh=telemetry.month_to_date_grid_import_kwh,
-            days_in_month=30,
+            days_in_month=days_in_month,
         )
         return DashboardData(
             telemetry=telemetry,

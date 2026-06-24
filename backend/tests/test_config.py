@@ -27,3 +27,13 @@ def test_load_config_from_env(monkeypatch):
 def test_objective_default_is_clamped(monkeypatch):
     monkeypatch.setenv("SA_OBJECTIVE_DEFAULT", "5")
     assert load_config().objective_default == 1.0
+
+
+def test_daily_consumption_kwh_from_env(monkeypatch):
+    monkeypatch.setenv("SA_DAILY_CONSUMPTION_KWH", "18")
+    assert load_config().daily_consumption_kwh == 18.0
+
+
+def test_daily_consumption_kwh_default(monkeypatch):
+    monkeypatch.delenv("SA_DAILY_CONSUMPTION_KWH", raising=False)
+    assert load_config().daily_consumption_kwh == 24.0

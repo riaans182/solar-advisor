@@ -20,6 +20,19 @@ class _FakeEstimator:
         )
 
 
+class _ZeroConfidenceEstimator:
+    """Mirrors the estimator's thin-history contract: daily consumption is 0.0
+    and confidence is 0, so the service must NOT use the 0.0 value."""
+
+    def estimate(self, start, end):
+        return EstimatedParameters(
+            usable_kwh=15.0,
+            usable_kwh_confidence=0.6,
+            daily_consumption_kwh=0.0,
+            daily_consumption_confidence=0.0,
+        )
+
+
 class _FakeForecast:
     def fetch(self):
         return SolarForecast(expected_pv_kwh_today=8.0, expected_pv_kwh_tomorrow=8.0)
@@ -87,3 +100,15 @@ def test_objective_defaults_to_config_when_none():
     )
     data = svc.build(_live_state(), objective=None)
     assert data.objective == 0.5  # config default
+
+
+def test_daily_load_falls_back_to_config_when_confidence_zero():
+    """When the estimator reports daily_consumption_confidence == 0 (thin history),
+    the service must use the config default rather than the physically-wrong 0.0."""
+    svc = RecommendationService(
+        config=_config(),  # daily_consumption_kwh defaults to 24.0
+        estimator=_ZeroConfidenceEstimator(),
+        forecast=_FakeForecast(),
+    )
+    data = svc.build(_live_state(), objective=0.0)
+    assert data.daily_consumption_kwh == 24.0  # config fallback, NOT 0.0

@@ -37,6 +37,7 @@ class AppConfig:
     # Forecast (static fallback values, kWh)
     forecast_today_kwh: float
     forecast_tomorrow_kwh: float
+    daily_consumption_kwh: float = 24.0  # fallback when the estimator's confidence is 0
 
 
 def load_config() -> AppConfig:
@@ -59,4 +60,5 @@ def load_config() -> AppConfig:
         db_path=os.environ.get("SA_DB_PATH", "solar_advisor.db"),
         forecast_today_kwh=float(os.environ.get("SA_FORECAST_TODAY_KWH", "20")),
         forecast_tomorrow_kwh=float(os.environ.get("SA_FORECAST_TOMORROW_KWH", "20")),
+        daily_consumption_kwh=float(os.environ.get("SA_DAILY_CONSUMPTION_KWH", "24")),
     )

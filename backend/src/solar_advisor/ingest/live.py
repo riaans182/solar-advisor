@@ -18,7 +18,13 @@ from solar_advisor.storage.store import TelemetryStore
 class LiveState:
     """Holds the latest telemetry snapshot and schedule, updated from MQTT.
     Read-only against the inverter: every topic is asserted read-only, and
-    persistence reuses the store's append-only API (spec §7)."""
+    persistence reuses the store's append-only API (spec §7).
+
+    Consistency contract: `telemetry` and `schedule` are each independently the
+    latest known value, updated atomically via whole-reference reassignment of
+    immutable snapshots (no lock). A reader may therefore observe a `telemetry`
+    and a `schedule` captured at slightly different moments; this is acceptable
+    for advisory display."""
 
     def __init__(self, store: TelemetryStore | None) -> None:
         self._store = store
