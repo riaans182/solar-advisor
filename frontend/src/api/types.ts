@@ -34,6 +34,8 @@ export interface DashboardView {
   daily_consumption_kwh: number
   daily_consumption_confidence: number
   tariff_rate: number
+  tariff_source: string
+  tariff_source_date: string | null
   expected_pv_kwh_today: number
   expected_pv_kwh_tomorrow: number
   slots: SlotView[]
@@ -59,4 +61,24 @@ export interface HistoryPoint {
 
 export interface HistoryView {
   points: HistoryPoint[]
+}
+
+export interface PurchaseCreate {
+  purchased_at: string // YYYY-MM-DD
+  rand: number
+  units_kwh: number
+  note?: string | null
+}
+
+export interface PurchaseView {
+  id: number
+  purchased_at: string
+  rand: number
+  units_kwh: number
+  note: string | null
+  effective_rate: number
+}
+
+export interface PurchaseListView {
+  purchases: PurchaseView[]
 }
