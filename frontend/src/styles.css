@@ -1,0 +1,92 @@
+/*
+ * Global palette + page atmosphere for the Solar Advisor dashboard.
+ *
+ * Every component reads from these --sa-* tokens (with local fallbacks), so
+ * defining them once here keeps the whole UI on one coherent "instrument
+ * console" palette: deep slate surfaces, a solar-amber accent, a resilience
+ * green, and a clear cost-warning amber/red. Tuned for sustained readability
+ * at a glance — the explicit goal is "easier to read than the stock UI".
+ */
+
+:root {
+  /* Surfaces & structure */
+  --sa-bg: #0b0f15;
+  --sa-bg-glow: #131c2b;
+  --sa-surface: #161c24;
+  --sa-surface-2: #1b222c;
+  --sa-track: #0e131a;
+  --sa-line: #273140;
+  --sa-line-soft: #1e2733;
+
+  /* Text */
+  --sa-text: #eef2f7;
+  --sa-text-dim: #9aa6b6;
+  --sa-muted: #6b7689;
+
+  /* Semantic — resilience (good) */
+  --sa-good: #34d399;
+  --sa-good-soft: #34d39915;
+  --sa-good-line: #34d39933;
+
+  /* Semantic — cost / caution (warn) */
+  --sa-warn: #e0b54a;
+  --sa-warn-soft: #d8a83a14;
+  --sa-warn-line: #d8a83a44;
+  --sa-warn-text: #f5d98a;
+
+  /* Semantic — alarm (bad) */
+  --sa-bad: #ef6b6b;
+  --sa-bad-soft: #ef6b6b15;
+  --sa-bad-line: #ef6b6b3a;
+
+  /* Solar amber */
+  --sa-solar: #f5b942;
+  --sa-solar-soft: #f5b94215;
+
+  /* Interactive accent */
+  --sa-accent: #5aa9ff;
+  --sa-accent-line: #3a6df0;
+  --sa-accent-hover: #3a6df0;
+  --sa-focus: #7aa2ff;
+
+  /* Neutral wash */
+  --sa-neutral-soft: #6b768914;
+
+  /* Typography */
+  --sa-font: 'Sora', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --sa-font-num: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  font-family: var(--sa-font);
+  color: var(--sa-text);
+  background:
+    radial-gradient(1100px 620px at 78% -8%, var(--sa-bg-glow) 0%, transparent 58%),
+    radial-gradient(900px 500px at -6% 4%, #10202c 0%, transparent 52%), var(--sa-bg);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'tnum' 0;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+::selection {
+  background: var(--sa-accent-line);
+  color: #fff;
+}

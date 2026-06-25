@@ -1,5 +1,7 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import Dashboard from './views/Dashboard.vue'
+</script>
 
 <template>
-  <main><h1>Solar Advisor</h1></main>
+  <Dashboard />
 </template>

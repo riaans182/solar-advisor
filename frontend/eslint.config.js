@@ -16,4 +16,12 @@ export default defineConfigWithVueTs(
   pluginVue.configs['flat/recommended'],
   vueTsConfigs.recommended,
   skipFormatting,
+  {
+    name: 'app/single-word-views',
+    // App.vue and the top-level Dashboard route view are intentionally
+    // single-word, matching the plan's file names.
+    rules: {
+      'vue/multi-word-component-names': ['error', { ignores: ['App', 'Dashboard'] }],
+    },
+  },
 )
