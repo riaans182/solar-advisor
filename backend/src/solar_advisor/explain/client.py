@@ -22,6 +22,9 @@ _WITHHELD_MESSAGE = (
     "An explanation was generated but could not be verified against the engine's "
     "numbers, so it was withheld. Read the engine figures above directly."
 )
+_UNAVAILABLE_MESSAGE = (
+    "An explanation could not be generated right now. The engine figures above are current."
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,13 +58,21 @@ class Explainer:
         if not self._enabled:
             return ExplanationResult(text=_DISABLED_MESSAGE, generated=False, guard_ok=True)
 
+        # Best-effort throttle: under FastAPI's threadpool this read-then-write of
+        # _last_call is not atomic, so it is a coarse cost gate, not a correctness
+        # boundary — provenance is enforced by the guard, not the limiter.
         now = self._now()
         if self._last_call is not None and (now - self._last_call) < self._min_interval_s:
             return ExplanationResult(text=_RATE_LIMITED_MESSAGE, generated=False, guard_ok=True)
         self._last_call = now
 
         system, user = build_messages(ctx)
-        reply = self._complete(system, user)
+        try:
+            reply = self._complete(system, user)
+        except Exception:  # noqa: BLE001 - any provider failure degrades, never 500s
+            return ExplanationResult(text=_UNAVAILABLE_MESSAGE, generated=False, guard_ok=True)
+        if not reply.strip():
+            return ExplanationResult(text=_UNAVAILABLE_MESSAGE, generated=False, guard_ok=True)
         result = check_provenance(reply, allowed=ctx.allowed_numbers())
         if not result.ok:
             return ExplanationResult(

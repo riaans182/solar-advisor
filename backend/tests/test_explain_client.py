@@ -1,5 +1,9 @@
 # tests/test_explain_client.py
-from solar_advisor.explain.client import Explainer, ExplanationResult
+from solar_advisor.explain.client import (
+    _UNAVAILABLE_MESSAGE,
+    Explainer,
+    ExplanationResult,
+)
 from tests.test_explain_context import _dashboard_data
 
 WITHHELD_MARKER = "could not be verified"
@@ -65,3 +69,25 @@ def test_rate_limit_blocks_second_call_within_interval():
     second = explainer.explain(_ctx())
     assert second.generated is False
     assert "too frequently" in second.text.lower() or "rate" in second.text.lower()
+
+
+def test_completion_failure_degrades_gracefully():
+    def boom(s, u):
+        raise RuntimeError("anthropic down")
+
+    explainer = Explainer(complete=boom, enabled=True, min_interval_s=0.0)
+    result = explainer.explain(_ctx())  # must not raise
+    assert result.generated is False
+    assert result.guard_ok is True
+    assert result.text == _UNAVAILABLE_MESSAGE
+
+
+def test_empty_reply_degrades_gracefully():
+    def blank(s, u):
+        return "   \n  "  # whitespace-only
+
+    explainer = Explainer(complete=blank, enabled=True, min_interval_s=0.0)
+    result = explainer.explain(_ctx())
+    assert result.generated is False
+    assert result.guard_ok is True
+    assert result.text == _UNAVAILABLE_MESSAGE

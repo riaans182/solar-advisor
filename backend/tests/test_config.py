@@ -56,3 +56,10 @@ def test_explain_settings_defaults(monkeypatch):
     assert cfg.explain_model == "claude-haiku-4-5"
     assert cfg.explain_enabled is True
     assert cfg.explain_min_interval_s == 10.0
+
+
+def test_explain_max_tokens_default_and_env(monkeypatch):
+    monkeypatch.delenv("SA_EXPLAIN_MAX_TOKENS", raising=False)
+    assert load_config().explain_max_tokens == 2048
+    monkeypatch.setenv("SA_EXPLAIN_MAX_TOKENS", "512")
+    assert load_config().explain_max_tokens == 512

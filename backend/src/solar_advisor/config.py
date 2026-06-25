@@ -42,6 +42,7 @@ class AppConfig:
     explain_model: str = "claude-haiku-4-5"
     explain_enabled: bool = True
     explain_min_interval_s: float = 10.0
+    explain_max_tokens: int = 1024
 
 
 def load_config() -> AppConfig:
@@ -68,4 +69,5 @@ def load_config() -> AppConfig:
         explain_model=os.environ.get("SA_EXPLAIN_MODEL", "claude-haiku-4-5"),
         explain_enabled=os.environ.get("SA_EXPLAIN_ENABLED", "true").strip().lower() != "false",
         explain_min_interval_s=float(os.environ.get("SA_EXPLAIN_MIN_INTERVAL_S", "10")),
+        explain_max_tokens=int(os.environ.get("SA_EXPLAIN_MAX_TOKENS", "2048")),
     )

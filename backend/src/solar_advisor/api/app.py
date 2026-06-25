@@ -180,7 +180,7 @@ def create_production_app() -> FastAPI:
     )
     service = RecommendationService(config=config, estimator=estimator, forecast=forecast)
     explainer = Explainer(
-        complete=anthropic_complete(config.explain_model),
+        complete=anthropic_complete(config.explain_model, max_tokens=config.explain_max_tokens),
         enabled=config.explain_enabled,
         min_interval_s=config.explain_min_interval_s,
     )
