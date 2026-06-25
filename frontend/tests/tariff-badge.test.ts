@@ -18,4 +18,11 @@ describe('TariffBadge', () => {
     })
     expect(w.text().toLowerCase()).toContain('config default')
   })
+
+  it('falls back to the config message when a purchase source has no date', () => {
+    const w = mount(TariffBadge, {
+      props: { rate: 3.56, source: 'purchase', sourceDate: null },
+    })
+    expect(w.text().toLowerCase()).toContain('config default')
+  })
 })

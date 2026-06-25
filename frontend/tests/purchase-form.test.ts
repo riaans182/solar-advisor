@@ -47,4 +47,13 @@ describe('PurchaseForm', () => {
     })
     expect(w.emitted('created')).toBeTruthy()
   })
+
+  it('clears the rand and units fields after a successful submit', async () => {
+    const w = mount(PurchaseForm)
+    await fill(w, '1000', '250')
+    await w.get('form').trigger('submit.prevent')
+    await flushPromises()
+    expect((w.get('input[name="rand"]').element as HTMLInputElement).value).toBe('')
+    expect((w.get('input[name="units_kwh"]').element as HTMLInputElement).value).toBe('')
+  })
 })
