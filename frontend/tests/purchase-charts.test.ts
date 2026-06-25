@@ -41,4 +41,13 @@ describe('PurchaseCharts', () => {
     expect(w.text().toLowerCase()).toContain('no purchases')
     expect(w.find('[data-test="rate-line"]').exists()).toBe(false)
   })
+
+  it('renders a single purchase and a flat-rate series without crashing', () => {
+    const one = [
+      { id: 1, purchased_at: '2026-06-01', rand: 1000, units_kwh: 250, note: null, effective_rate: 4.0 },
+    ]
+    const w = mount(PurchaseCharts, { props: { purchases: one, currentRate: 4.0 } })
+    expect(w.findAll('[data-test="spend-bar"]')).toHaveLength(1)
+    expect(w.find('[data-test="rate-ref"]').exists()).toBe(true)
+  })
 })
