@@ -1,7 +1,9 @@
 # src/solar_advisor/api/schemas.py
 from __future__ import annotations
 
-from pydantic import BaseModel
+from datetime import date
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class SlotView(BaseModel):
@@ -57,8 +59,37 @@ class DashboardView(BaseModel):
     daily_consumption_kwh: float
     daily_consumption_confidence: float
     tariff_rate: float
+    tariff_source: str
+    tariff_source_date: str | None
     expected_pv_kwh_today: float
     expected_pv_kwh_tomorrow: float
     slots: list[SlotView]
     recommendation: RecommendationView
     disclaimer: str
+
+
+class PurchaseCreate(BaseModel):
+    purchased_at: date
+    rand: float = Field(gt=0)
+    units_kwh: float = Field(gt=0)
+    note: str | None = None
+
+    @field_validator("purchased_at")
+    @classmethod
+    def _not_in_future(cls, v: date) -> date:
+        if v > date.today():
+            raise ValueError("purchased_at cannot be in the future")
+        return v
+
+
+class PurchaseView(BaseModel):
+    id: int
+    purchased_at: str
+    rand: float
+    units_kwh: float
+    note: str | None
+    effective_rate: float
+
+
+class PurchaseListView(BaseModel):
+    purchases: list[PurchaseView]
