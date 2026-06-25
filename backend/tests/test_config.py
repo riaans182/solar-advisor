@@ -37,3 +37,22 @@ def test_daily_consumption_kwh_from_env(monkeypatch):
 def test_daily_consumption_kwh_default(monkeypatch):
     monkeypatch.delenv("SA_DAILY_CONSUMPTION_KWH", raising=False)
     assert load_config().daily_consumption_kwh == 24.0
+
+
+def test_explain_settings_from_env(monkeypatch):
+    monkeypatch.setenv("SA_EXPLAIN_MODEL", "claude-opus-4-8")
+    monkeypatch.setenv("SA_EXPLAIN_ENABLED", "false")
+    monkeypatch.setenv("SA_EXPLAIN_MIN_INTERVAL_S", "30")
+    cfg = load_config()
+    assert cfg.explain_model == "claude-opus-4-8"
+    assert cfg.explain_enabled is False
+    assert cfg.explain_min_interval_s == 30.0
+
+
+def test_explain_settings_defaults(monkeypatch):
+    for var in ("SA_EXPLAIN_MODEL", "SA_EXPLAIN_ENABLED", "SA_EXPLAIN_MIN_INTERVAL_S"):
+        monkeypatch.delenv(var, raising=False)
+    cfg = load_config()
+    assert cfg.explain_model == "claude-haiku-4-5"
+    assert cfg.explain_enabled is True
+    assert cfg.explain_min_interval_s == 10.0
