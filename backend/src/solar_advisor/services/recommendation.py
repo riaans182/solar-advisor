@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import calendar
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Protocol
 
 from solar_advisor.config import AppConfig
@@ -16,6 +16,8 @@ from solar_advisor.engine.tariff import FlatRateTariff
 from solar_advisor.estimation.estimator import EstimatedParameters
 from solar_advisor.forecast.provider import ForecastProvider
 from solar_advisor.ingest.live import LiveState
+from solar_advisor.tariff.derivation import DerivedRate
+from solar_advisor.tariff.provider import TariffProvider
 
 ADVISORY_DISCLAIMER = (
     "Advisory only. This app is read-only against your inverter; apply any changes yourself."
@@ -36,6 +38,8 @@ class DashboardData:
     daily_consumption_kwh: float
     daily_consumption_confidence: float
     tariff_rate: float
+    tariff_source: str
+    tariff_source_date: date | None
     expected_pv_kwh_today: float
     expected_pv_kwh_tomorrow: float
     disclaimer: str
@@ -50,11 +54,16 @@ class RecommendationService:
     then runs the pure engine."""
 
     def __init__(
-        self, config: AppConfig, estimator: _Estimator, forecast: ForecastProvider
+        self,
+        config: AppConfig,
+        estimator: _Estimator,
+        forecast: ForecastProvider,
+        tariff_provider: TariffProvider | None = None,
     ) -> None:
         self._config = config
         self._estimator = estimator
         self._forecast = forecast
+        self._tariff_provider = tariff_provider
 
     def build(self, state: LiveState, objective: float | None) -> DashboardData:
         if state.telemetry is None or state.schedule is None:
@@ -78,8 +87,12 @@ class RecommendationService:
             max_charge_power_w=cfg.max_charge_power_w,
             max_discharge_power_w=cfg.max_discharge_power_w,
         )
+        if self._tariff_provider is not None:
+            derived = self._tariff_provider.current_rate(telemetry.ts.date())
+        else:
+            derived = DerivedRate(rate=cfg.tariff_rate, source="config", source_date=None)
         tariff = FlatRateTariff(
-            energy_rate=cfg.tariff_rate, monthly_fixed_charge=cfg.tariff_fixed_charge
+            energy_rate=derived.rate, monthly_fixed_charge=cfg.tariff_fixed_charge
         )
         forecast = self._forecast.fetch()
         load = LoadProfile(daily_kwh=daily_kwh, essential_power_w=cfg.essential_power_w)
@@ -115,7 +128,9 @@ class RecommendationService:
             usable_kwh_confidence=est.usable_kwh_confidence,
             daily_consumption_kwh=daily_kwh,
             daily_consumption_confidence=est.daily_consumption_confidence,
-            tariff_rate=cfg.tariff_rate,
+            tariff_rate=derived.rate,
+            tariff_source=derived.source,
+            tariff_source_date=derived.source_date,
             expected_pv_kwh_today=forecast.expected_pv_kwh_today,
             expected_pv_kwh_tomorrow=forecast.expected_pv_kwh_tomorrow,
             disclaimer=ADVISORY_DISCLAIMER,

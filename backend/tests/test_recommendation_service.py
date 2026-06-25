@@ -1,12 +1,14 @@
 # tests/test_recommendation_service.py
-from datetime import UTC, datetime, time
+from datetime import UTC, date, datetime, time
 
 from solar_advisor.config import AppConfig
+from solar_advisor.domain.purchase import Purchase
 from solar_advisor.domain.schedule import build_schedule
 from solar_advisor.engine.inputs import SolarForecast
 from solar_advisor.estimation.estimator import EstimatedParameters
 from solar_advisor.ingest.live import LiveState
 from solar_advisor.services.recommendation import DashboardData, RecommendationService
+from solar_advisor.tariff.provider import TariffProvider
 from tests.conftest import make_telemetry
 
 
@@ -124,3 +126,37 @@ def test_dashboard_surfaces_tariff_and_forecast():
     assert data.tariff_rate == 3.56
     assert data.expected_pv_kwh_today == 8.0
     assert data.expected_pv_kwh_tomorrow == 8.0
+
+
+class _FakeReader:
+    def __init__(self, purchases):
+        self._purchases = purchases
+
+    def list_since(self, cutoff):
+        return [p for p in self._purchases if p.purchased_at >= cutoff]
+
+
+def test_tariff_derived_from_purchases_when_provider_present():
+    # _live_state() stamps telemetry at 2026-06-22; a 2026-06-10 buy is in-window.
+    reader = _FakeReader([Purchase(purchased_at=date(2026, 6, 10), rand=1000.0, units_kwh=250.0)])
+    provider = TariffProvider(reader=reader, fallback_rate=3.56, window_days=90)
+    svc = RecommendationService(
+        config=_config(),
+        estimator=_FakeEstimator(),
+        forecast=_FakeForecast(),
+        tariff_provider=provider,
+    )
+    data = svc.build(_live_state(), objective=0.5)
+    assert data.tariff_source == "purchase"
+    assert data.tariff_source_date == date(2026, 6, 10)
+    assert round(data.tariff_rate, 2) == 4.00  # 1000 / 250
+
+
+def test_tariff_falls_back_to_config_without_provider():
+    svc = RecommendationService(
+        config=_config(), estimator=_FakeEstimator(), forecast=_FakeForecast()
+    )
+    data = svc.build(_live_state(), objective=0.5)
+    assert data.tariff_source == "config"
+    assert data.tariff_source_date is None
+    assert data.tariff_rate == 3.56
