@@ -29,12 +29,22 @@ const errorMsg = ref('')
 let pollTimer: ReturnType<typeof setInterval> | undefined
 let debounceTimer: ReturnType<typeof setTimeout> | undefined
 
+// Monotonic token guarding against out-of-order dashboard responses: the poll
+// and the slider re-fetch race, so a stale response (old objective) could
+// resolve after a newer one and overwrite the rendered plan. Only the latest
+// in-flight request is allowed to assign state.
+let dashboardSeq = 0
+
 async function fetchDashboard(): Promise<void> {
+  const seq = ++dashboardSeq
   try {
-    dashboard.value = await getDashboard(objective.value)
+    const view = await getDashboard(objective.value)
+    if (seq !== dashboardSeq) return
+    dashboard.value = view
     notReady.value = false
     errorMsg.value = ''
   } catch (e) {
+    if (seq !== dashboardSeq) return
     if (e instanceof ApiError && e.status === 503) {
       // Live state not ready: keep any prior data, surface the waiting state.
       if (!dashboard.value) notReady.value = true
@@ -42,7 +52,7 @@ async function fetchDashboard(): Promise<void> {
       errorMsg.value = e instanceof Error ? e.message : 'Failed to reach the advisor service.'
     }
   } finally {
-    loading.value = false
+    if (seq === dashboardSeq) loading.value = false
   }
 }
 
