@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ScheduleTable from '../src/components/ScheduleTable.vue'
 import ObjectiveSlider from '../src/components/ObjectiveSlider.vue'
-import type { SlotView } from '../src/api/types'
+import RecommendationPanel from '../src/components/RecommendationPanel.vue'
+import type { RecommendationView, SlotView } from '../src/api/types'
 
 const slots: SlotView[] = [
   {
@@ -34,6 +35,42 @@ describe('ScheduleTable', () => {
     expect(w.text()).toContain('Grid-charging')
     expect(w.text()).toContain('Solar-charging')
     expect(w.text()).toContain('R46.28')
+  })
+
+  it('shows the actual slot count in the caption', () => {
+    const w = mount(ScheduleTable, { props: { slots } })
+    expect(w.text()).toContain('2 slots')
+  })
+
+  it('renders a no-schedule message and does not crash when empty', () => {
+    const w = mount(ScheduleTable, { props: { slots: [] } })
+    expect(w.text().toLowerCase()).toContain('no schedule')
+    expect(w.find('tbody tr').exists()).toBe(false)
+  })
+})
+
+const recommendation: RecommendationView = {
+  reserve_target_soc: 40,
+  enable_overnight_grid_charge: false,
+  grid_charge_kwh: 0,
+  expected_daily_grid_import_kwh: 3,
+  expected_daily_cost: 12.34,
+  backup_hours: 8.5,
+  monthly_cost_so_far: 100,
+}
+
+describe('RecommendationPanel', () => {
+  it('reflects new values when the recommendation prop is reassigned', async () => {
+    const w = mount(RecommendationPanel, { props: { recommendation } })
+    expect(w.text()).toContain('R12.34')
+
+    const next: RecommendationView = {
+      ...recommendation,
+      expected_daily_cost: 99.99,
+    }
+    await w.setProps({ recommendation: next })
+    expect(w.text()).toContain('R99.99')
+    expect(w.text()).not.toContain('R12.34')
   })
 })
 

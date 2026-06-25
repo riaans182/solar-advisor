@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { RecommendationView } from '../api/types'
 import { formatKwh, formatPercent, formatRand } from '../lib/format'
 
 const props = defineProps<{ recommendation: RecommendationView }>()
-const r = props.recommendation
+const r = computed(() => props.recommendation)
 </script>
 
 <template>

@@ -10,10 +10,12 @@ defineProps<{ slots: SlotView[] }>()
   <section class="schedule" aria-label="Planned battery schedule">
     <header class="schedule__head">
       <h3 class="schedule__title">Today's plan</h3>
-      <p class="schedule__hint">6 slots · per-slot cost &amp; behaviour</p>
+      <p class="schedule__hint">{{ slots.length }} slots · per-slot cost &amp; behaviour</p>
     </header>
 
-    <div class="schedule__scroll" role="region" aria-label="Schedule slots" tabindex="0">
+    <div v-if="!slots.length" class="schedule__empty">No schedule loaded yet</div>
+
+    <div v-else class="schedule__scroll" role="region" aria-label="Schedule slots" tabindex="0">
       <table class="schedule__table">
         <thead>
           <tr>
@@ -88,6 +90,15 @@ defineProps<{ slots: SlotView[] }>()
 
 .schedule__scroll {
   overflow-x: auto;
+}
+
+.schedule__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.4rem 1rem;
+  color: var(--sa-text-dim, #6b7689);
+  font-size: 0.86rem;
 }
 
 .schedule__table {
