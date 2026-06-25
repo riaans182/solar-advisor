@@ -24,6 +24,9 @@ services:
       SA_DB_PATH: /data/solar_advisor.db
       SA_TARIFF_RATE: ${SA_TARIFF_RATE:-3.56}
       SA_TARIFF_FIXED_CHARGE: ${SA_TARIFF_FIXED_CHARGE:-600}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?set in .env}
+      SA_EXPLAIN_MODEL: ${SA_EXPLAIN_MODEL:-claude-haiku-4-5}
+      SA_EXPLAIN_ENABLED: ${SA_EXPLAIN_ENABLED:-true}
     ports:
       - "8000:8000"
     volumes:

@@ -8,9 +8,16 @@ from collections.abc import AsyncIterator
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from solar_advisor.api.schemas import DashboardView, RecommendationView, SlotView
+from solar_advisor.api.schemas import (
+    DashboardView,
+    ExplanationView,
+    RecommendationView,
+    SlotView,
+)
 from solar_advisor.config import AppConfig, load_config
 from solar_advisor.estimation.estimator import ParameterEstimator
+from solar_advisor.explain.client import Explainer, anthropic_complete
+from solar_advisor.explain.context import build_context
 from solar_advisor.forecast.static_provider import StaticForecastProvider
 from solar_advisor.ingest.live import LiveState, run_live_ingest
 from solar_advisor.services.recommendation import DashboardData, RecommendationService
@@ -29,6 +36,13 @@ def get_service(request: Request) -> RecommendationService:
     if not isinstance(service, RecommendationService):
         raise HTTPException(status_code=500, detail="service not initialised")
     return service
+
+
+def get_explainer(request: Request) -> Explainer:
+    explainer = getattr(request.app.state, "explainer", None)
+    if not isinstance(explainer, Explainer):
+        raise HTTPException(status_code=500, detail="explainer not initialised")
+    return explainer
 
 
 def _to_view(data: DashboardData) -> DashboardView:
@@ -132,6 +146,26 @@ def build_app(state: LiveState, config: AppConfig | None = None) -> FastAPI:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         return _to_view(data)
 
+    @app.get("/api/explain", response_model=ExplanationView)
+    def explain(
+        objective: float | None = Query(default=None, ge=0.0, le=1.0),
+        service: RecommendationService = Depends(get_service),  # noqa: B008
+        state: LiveState = Depends(get_state),  # noqa: B008
+        explainer: Explainer = Depends(get_explainer),  # noqa: B008
+    ) -> ExplanationView:
+        try:
+            data = service.build(state, objective=objective)
+        except LookupError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        result = explainer.explain(build_context(data))
+        return ExplanationView(
+            explanation=result.text,
+            generated=result.generated,
+            guard_ok=result.guard_ok,
+            unverified_numbers=result.unverified,
+            disclaimer=data.disclaimer,
+        )
+
     return app
 
 
@@ -145,6 +179,12 @@ def create_production_app() -> FastAPI:
         today_kwh=config.forecast_today_kwh, tomorrow_kwh=config.forecast_tomorrow_kwh
     )
     service = RecommendationService(config=config, estimator=estimator, forecast=forecast)
+    explainer = Explainer(
+        complete=anthropic_complete(config.explain_model),
+        enabled=config.explain_enabled,
+        min_interval_s=config.explain_min_interval_s,
+    )
     app = build_app(state=state, config=config)
     app.state.service = service
+    app.state.explainer = explainer
     return app

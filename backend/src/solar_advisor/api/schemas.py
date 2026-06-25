@@ -25,6 +25,14 @@ class RecommendationView(BaseModel):
     monthly_cost_so_far: float
 
 
+class ExplanationView(BaseModel):
+    explanation: str
+    generated: bool
+    guard_ok: bool
+    unverified_numbers: list[float]
+    disclaimer: str
+
+
 class DashboardView(BaseModel):
     objective: float
     battery_soc: float
