@@ -33,6 +33,18 @@ class ExplanationView(BaseModel):
     disclaimer: str
 
 
+class HistoryPoint(BaseModel):
+    ts: str
+    battery_soc: float
+    pv_power: float
+    grid_power: float
+    load_power: float
+
+
+class HistoryView(BaseModel):
+    points: list[HistoryPoint]
+
+
 class DashboardView(BaseModel):
     objective: float
     battery_soc: float

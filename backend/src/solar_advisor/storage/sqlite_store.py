@@ -22,9 +22,11 @@ class SqliteTelemetryStore:
     """
 
     def __init__(self, path: Path | str, min_interval: timedelta = timedelta(seconds=10)) -> None:
-        # Single-threaded access assumed: sqlite3's default check_same_thread=True
-        # rejects cross-thread use. The async collector runs on one thread.
-        self._conn = sqlite3.connect(str(path))
+        # check_same_thread=False so the read-only API request path (served from a
+        # threadpool by uvicorn/TestClient) can call query_range on the same store the
+        # async collector writes to. sqlite3 serialises access internally; writes come
+        # only from the single collector thread, the API only reads.
+        self._conn = sqlite3.connect(str(path), check_same_thread=False)
         self._min_interval = min_interval
         self._last_saved_ts: datetime | None = None
         columns = ", ".join(f"{name} REAL" for name in _FIELDS)

@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime, timedelta
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,6 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from solar_advisor.api.schemas import (
     DashboardView,
     ExplanationView,
+    HistoryPoint,
+    HistoryView,
     RecommendationView,
     SlotView,
 )
@@ -22,6 +25,7 @@ from solar_advisor.forecast.static_provider import StaticForecastProvider
 from solar_advisor.ingest.live import LiveState, run_live_ingest
 from solar_advisor.services.recommendation import DashboardData, RecommendationService
 from solar_advisor.storage.sqlite_store import SqliteTelemetryStore
+from solar_advisor.storage.store import TelemetryStore
 
 
 def get_state(request: Request) -> LiveState:
@@ -36,6 +40,13 @@ def get_service(request: Request) -> RecommendationService:
     if not isinstance(service, RecommendationService):
         raise HTTPException(status_code=500, detail="service not initialised")
     return service
+
+
+def get_store(request: Request) -> TelemetryStore:
+    store = getattr(request.app.state, "store", None)
+    if not isinstance(store, TelemetryStore):
+        raise HTTPException(status_code=500, detail="store not initialised")
+    return store
 
 
 def get_explainer(request: Request) -> Explainer:
@@ -166,6 +177,26 @@ def build_app(state: LiveState, config: AppConfig | None = None) -> FastAPI:
             disclaimer=data.disclaimer,
         )
 
+    @app.get("/api/history", response_model=HistoryView)
+    def history(
+        hours: int = Query(default=24, ge=1, le=168),
+        store: TelemetryStore = Depends(get_store),  # noqa: B008
+    ) -> HistoryView:
+        end = datetime.now(UTC)
+        rows = store.query_range(end - timedelta(hours=hours), end)
+        return HistoryView(
+            points=[
+                HistoryPoint(
+                    ts=r.ts.isoformat(),
+                    battery_soc=r.battery_soc,
+                    pv_power=r.pv_power,
+                    grid_power=r.grid_power,
+                    load_power=r.load_power,
+                )
+                for r in rows
+            ]
+        )
+
     return app
 
 
@@ -185,6 +216,7 @@ def create_production_app() -> FastAPI:
         min_interval_s=config.explain_min_interval_s,
     )
     app = build_app(state=state, config=config)
+    app.state.store = store
     app.state.service = service
     app.state.explainer = explainer
     return app
