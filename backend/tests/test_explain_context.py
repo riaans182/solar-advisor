@@ -85,6 +85,12 @@ def test_allowed_numbers_is_curated_from_engine_values_not_prose():
     assert 0.0 not in allowed
 
 
+def test_allowed_numbers_includes_confidence_as_percent():
+    # usable_kwh_confidence is 0.6; "60%" is a legitimate restatement.
+    ctx = build_context(_dashboard_data())
+    assert 60.0 in ctx.allowed_numbers()
+
+
 def test_build_messages_returns_system_and_facts():
     ctx = build_context(_dashboard_data())
     system, user = build_messages(ctx)

@@ -75,6 +75,9 @@ class ExplanationContext:
             self.recommendation.backup_hours,
             self.recommendation.monthly_cost_so_far,
         ]
+        # Confidences may legitimately be restated as percentages (e.g. 0.6 -> "60%").
+        nums.append(float(round(self.usable_kwh_confidence * 100)))
+        nums.append(float(round(self.daily_consumption_confidence * 100)))
         for i, s in enumerate(self.slots, start=1):
             nums.extend([float(i), float(s.target_soc), s.end_soc, s.grid_import_kwh, s.cost])
         return nums
