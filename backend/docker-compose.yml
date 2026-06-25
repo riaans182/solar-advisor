@@ -33,5 +33,15 @@ services:
       - sa_data:/data
     restart: unless-stopped
 
+  web:
+    # The compose file lives in backend/, so the frontend build context is ../frontend.
+    build:
+      context: ../frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
 volumes:
   sa_data:
