@@ -112,3 +112,15 @@ def test_daily_load_falls_back_to_config_when_confidence_zero():
     )
     data = svc.build(_live_state(), objective=0.0)
     assert data.daily_consumption_kwh == 24.0  # config fallback, NOT 0.0
+
+
+def test_dashboard_surfaces_tariff_and_forecast():
+    svc = RecommendationService(
+        config=_config(),
+        estimator=_FakeEstimator(),
+        forecast=_FakeForecast(),
+    )
+    data = svc.build(_live_state(), objective=0.5)
+    assert data.tariff_rate == 3.56
+    assert data.expected_pv_kwh_today == 8.0
+    assert data.expected_pv_kwh_tomorrow == 8.0

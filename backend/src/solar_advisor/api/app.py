@@ -43,6 +43,9 @@ def _to_view(data: DashboardData) -> DashboardView:
         usable_kwh_confidence=data.usable_kwh_confidence,
         daily_consumption_kwh=data.daily_consumption_kwh,
         daily_consumption_confidence=data.daily_consumption_confidence,
+        tariff_rate=data.tariff_rate,
+        expected_pv_kwh_today=round(data.expected_pv_kwh_today, 2),
+        expected_pv_kwh_tomorrow=round(data.expected_pv_kwh_tomorrow, 2),
         slots=[
             SlotView(
                 start=a.slot.start.isoformat(timespec="minutes"),

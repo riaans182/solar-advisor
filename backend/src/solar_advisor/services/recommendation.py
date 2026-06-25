@@ -35,6 +35,9 @@ class DashboardData:
     usable_kwh_confidence: float
     daily_consumption_kwh: float
     daily_consumption_confidence: float
+    tariff_rate: float
+    expected_pv_kwh_today: float
+    expected_pv_kwh_tomorrow: float
     disclaimer: str
 
 
@@ -112,5 +115,8 @@ class RecommendationService:
             usable_kwh_confidence=est.usable_kwh_confidence,
             daily_consumption_kwh=daily_kwh,
             daily_consumption_confidence=est.daily_consumption_confidence,
+            tariff_rate=cfg.tariff_rate,
+            expected_pv_kwh_today=forecast.expected_pv_kwh_today,
+            expected_pv_kwh_tomorrow=forecast.expected_pv_kwh_tomorrow,
             disclaimer=ADVISORY_DISCLAIMER,
         )

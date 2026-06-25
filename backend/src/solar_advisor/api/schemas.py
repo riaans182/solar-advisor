@@ -36,6 +36,9 @@ class DashboardView(BaseModel):
     usable_kwh_confidence: float
     daily_consumption_kwh: float
     daily_consumption_confidence: float
+    tariff_rate: float
+    expected_pv_kwh_today: float
+    expected_pv_kwh_tomorrow: float
     slots: list[SlotView]
     recommendation: RecommendationView
     disclaimer: str
