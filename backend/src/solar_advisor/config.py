@@ -42,7 +42,7 @@ class AppConfig:
     explain_model: str = "claude-haiku-4-5"
     explain_enabled: bool = True
     explain_min_interval_s: float = 10.0
-    explain_max_tokens: int = 1024
+    explain_max_tokens: int = 2048
 
 
 def load_config() -> AppConfig:
