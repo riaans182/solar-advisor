@@ -66,35 +66,35 @@ async function onSubmit(): Promise<void> {
     <div class="pf__grid">
       <label class="pf__field">
         <span class="pf__label">Date</span>
-        <input name="purchased_at" type="date" v-model="purchasedAt" :max="todayIso()" />
+        <input v-model="purchasedAt" name="purchased_at" type="date" :max="todayIso()" />
       </label>
       <label class="pf__field">
         <span class="pf__label">Rand paid</span>
         <input
+          v-model="randStr"
           name="rand"
           type="number"
           min="0"
           step="0.01"
           inputmode="decimal"
-          v-model="randStr"
           placeholder="1000"
         />
       </label>
       <label class="pf__field">
         <span class="pf__label">Units received</span>
         <input
+          v-model="unitsStr"
           name="units_kwh"
           type="number"
           min="0"
           step="0.01"
           inputmode="decimal"
-          v-model="unitsStr"
           placeholder="280.9"
         />
       </label>
       <label class="pf__field pf__field--wide">
         <span class="pf__label">Note (optional)</span>
-        <input name="note" type="text" v-model="note" placeholder="e.g. City of Cape Town" />
+        <input v-model="note" name="note" type="text" placeholder="e.g. City of Cape Town" />
       </label>
     </div>
 
