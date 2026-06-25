@@ -6,7 +6,7 @@ import contextlib
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from solar_advisor.api.schemas import (
@@ -14,18 +14,24 @@ from solar_advisor.api.schemas import (
     ExplanationView,
     HistoryPoint,
     HistoryView,
+    PurchaseCreate,
+    PurchaseListView,
+    PurchaseView,
     RecommendationView,
     SlotView,
 )
 from solar_advisor.config import AppConfig, load_config
+from solar_advisor.domain.purchase import Purchase
 from solar_advisor.estimation.estimator import ParameterEstimator
 from solar_advisor.explain.client import Explainer, anthropic_complete
 from solar_advisor.explain.context import build_context
 from solar_advisor.forecast.static_provider import StaticForecastProvider
 from solar_advisor.ingest.live import LiveState, run_live_ingest
 from solar_advisor.services.recommendation import DashboardData, RecommendationService
+from solar_advisor.storage.purchase_store import PurchaseStore, SqlitePurchaseStore
 from solar_advisor.storage.sqlite_store import SqliteTelemetryStore
 from solar_advisor.storage.store import TelemetryStore
+from solar_advisor.tariff.provider import TariffProvider
 
 
 def get_state(request: Request) -> LiveState:
@@ -49,11 +55,30 @@ def get_store(request: Request) -> TelemetryStore:
     return store
 
 
+def get_purchase_store(request: Request) -> PurchaseStore:
+    store = getattr(request.app.state, "purchase_store", None)
+    if not isinstance(store, PurchaseStore):
+        raise HTTPException(status_code=500, detail="purchase store not initialised")
+    return store
+
+
 def get_explainer(request: Request) -> Explainer:
     explainer = getattr(request.app.state, "explainer", None)
     if not isinstance(explainer, Explainer):
         raise HTTPException(status_code=500, detail="explainer not initialised")
     return explainer
+
+
+def _purchase_view(p: Purchase) -> PurchaseView:
+    assert p.id is not None  # always set by the store on read/insert
+    return PurchaseView(
+        id=p.id,
+        purchased_at=p.purchased_at.isoformat(),
+        rand=p.rand,
+        units_kwh=p.units_kwh,
+        note=p.note,
+        effective_rate=round(p.effective_rate, 4),
+    )
 
 
 def _to_view(data: DashboardData) -> DashboardView:
@@ -69,6 +94,10 @@ def _to_view(data: DashboardData) -> DashboardView:
         daily_consumption_kwh=data.daily_consumption_kwh,
         daily_consumption_confidence=data.daily_consumption_confidence,
         tariff_rate=data.tariff_rate,
+        tariff_source=data.tariff_source,
+        tariff_source_date=(
+            data.tariff_source_date.isoformat() if data.tariff_source_date else None
+        ),
         expected_pv_kwh_today=round(data.expected_pv_kwh_today, 2),
         expected_pv_kwh_tomorrow=round(data.expected_pv_kwh_tomorrow, 2),
         slots=[
@@ -128,7 +157,7 @@ def build_app(state: LiveState, config: AppConfig | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["http://localhost:5173"],  # Vite dev server (Plan E)
-        allow_methods=["GET"],
+        allow_methods=["GET", "POST", "DELETE"],  # POST/DELETE used only by /api/purchases
         allow_headers=["*"],
     )
 
@@ -197,6 +226,36 @@ def build_app(state: LiveState, config: AppConfig | None = None) -> FastAPI:
             ]
         )
 
+    @app.post("/api/purchases", response_model=PurchaseView, status_code=201)
+    def create_purchase(
+        body: PurchaseCreate,
+        store: PurchaseStore = Depends(get_purchase_store),  # noqa: B008
+    ) -> PurchaseView:
+        saved = store.add(
+            Purchase(
+                purchased_at=body.purchased_at,
+                rand=body.rand,
+                units_kwh=body.units_kwh,
+                note=body.note,
+            )
+        )
+        return _purchase_view(saved)
+
+    @app.get("/api/purchases", response_model=PurchaseListView)
+    def list_purchases(
+        store: PurchaseStore = Depends(get_purchase_store),  # noqa: B008
+    ) -> PurchaseListView:
+        return PurchaseListView(purchases=[_purchase_view(p) for p in store.list_all()])
+
+    @app.delete("/api/purchases/{purchase_id}", status_code=204)
+    def delete_purchase(
+        purchase_id: int,
+        store: PurchaseStore = Depends(get_purchase_store),  # noqa: B008
+    ) -> Response:
+        if not store.delete(purchase_id):
+            raise HTTPException(status_code=404, detail="no such purchase")
+        return Response(status_code=204)
+
     return app
 
 
@@ -209,7 +268,18 @@ def create_production_app() -> FastAPI:
     forecast = StaticForecastProvider(
         today_kwh=config.forecast_today_kwh, tomorrow_kwh=config.forecast_tomorrow_kwh
     )
-    service = RecommendationService(config=config, estimator=estimator, forecast=forecast)
+    purchase_store = SqlitePurchaseStore(config.db_path)
+    tariff_provider = TariffProvider(
+        reader=purchase_store,
+        fallback_rate=config.tariff_rate,
+        window_days=config.tariff_window_days,
+    )
+    service = RecommendationService(
+        config=config,
+        estimator=estimator,
+        forecast=forecast,
+        tariff_provider=tariff_provider,
+    )
     explainer = Explainer(
         complete=anthropic_complete(config.explain_model, max_tokens=config.explain_max_tokens),
         enabled=config.explain_enabled,
@@ -217,6 +287,7 @@ def create_production_app() -> FastAPI:
     )
     app = build_app(state=state, config=config)
     app.state.store = store
+    app.state.purchase_store = purchase_store
     app.state.service = service
     app.state.explainer = explainer
     return app

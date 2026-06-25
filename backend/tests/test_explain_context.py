@@ -38,6 +38,8 @@ def _dashboard_data():
         daily_consumption_kwh=20.0,
         daily_consumption_confidence=0.5,
         tariff_rate=3.56,
+        tariff_source="config",
+        tariff_source_date=None,
         expected_pv_kwh_today=8.0,
         expected_pv_kwh_tomorrow=8.0,
         disclaimer=ADVISORY_DISCLAIMER,
