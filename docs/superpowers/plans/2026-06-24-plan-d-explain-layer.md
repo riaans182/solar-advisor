@@ -766,7 +766,7 @@ class Explainer:
 
         system, user = build_messages(ctx)
         reply = self._complete(system, user)
-        result = check_provenance(reply, allowed=extract_numbers(user))
+        result = check_provenance(reply, allowed=ctx.allowed_numbers())
         if not result.ok:
             return ExplanationResult(
                 text=_WITHHELD_MESSAGE, generated=True, guard_ok=False,
@@ -1001,7 +1001,7 @@ git commit -m "feat(api): /api/explain endpoint with provenance-guarded LLM expl
 ## Self-review notes
 
 - **Spec coverage:** §8 enforced boundary — `explain/` consumes only `DashboardData`/`ExplanationContext` (pre-computed values), never the engine; the import-linter contract keeps the engine free of `explain`/`anthropic` (verified each `make check`). §8 provenance guard — `guard.check_provenance` + the withhold path in `Explainer`, the centerpiece tested invariant. §8 model/key/kill-switch/rate-limit — `anthropic_complete` (server-side `ANTHROPIC_API_KEY`), `explain_enabled`, `explain_min_interval_s`. §3 goal-3 — the explanation renders per-slot behavior + cost + recommendation. Also closes the Plan C deferred minor (forecast/tariff surfaced for the explanation and the UI).
-- **Type consistency:** `build_context(DashboardData)` reads the exact `DashboardData` fields defined in Plan C + the three added in Task 2; `SlotFact`/`RecommendationFact` mirror `SlotAssessment`/`Recommendation`. `Explainer.explain(ExplanationContext) -> ExplanationResult` is used identically by `test_explain_client` and the `/api/explain` endpoint. `build_messages` returns `(system, user)` where `user == ctx.to_facts()`, and the guard's whitelist is `extract_numbers(user)` — the same string — so provenance is exact. `get_explainer`/`app.state.explainer` follow the Plan C `app.state` + `Depends` pattern.
+- **Type consistency:** `build_context(DashboardData)` reads the exact `DashboardData` fields defined in Plan C + the three added in Task 2; `SlotFact`/`RecommendationFact` mirror `SlotAssessment`/`Recommendation`. `Explainer.explain(ExplanationContext) -> ExplanationResult` is used identically by `test_explain_client` and the `/api/explain` endpoint. `build_messages` returns `(system, user)` where `user == ctx.to_facts()`, and the guard's whitelist is `ctx.allowed_numbers()` — a curated list of engine values, not scraped from the prose — so provenance is exact. `get_explainer`/`app.state.explainer` follow the Plan C `app.state` + `Depends` pattern.
 - **No placeholders:** every code step is complete and runnable; commands carry expected output.
 - **Safety:** the LLM call is outbound to Anthropic only; nothing in `explain/` can touch the inverter. The key is read from the environment by the SDK, never logged or returned.
 ```

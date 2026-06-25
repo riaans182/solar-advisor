@@ -13,6 +13,8 @@ _SYSTEM = (
     "- Do NOT invent, compute, or estimate any number. Only use numbers that appear in "
     "the facts provided. If you want to state a figure, it must be one of the given "
     "values. Do not add, multiply, or derive new numbers.\n"
+    "- Write every number as plain digits with its unit (e.g. '13 kWh', 'R46', '90%'). "
+    "Do not spell numbers out in words, and do not use scientific notation.\n"
     "- This is advisory only: the app is read-only and never changes the inverter. Frame "
     "suggestions as things the user can choose to apply themselves.\n"
     "- The tariff is flat with no cheap overnight window, so grid-charging the battery is "

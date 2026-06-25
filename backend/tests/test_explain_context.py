@@ -67,6 +67,24 @@ def test_to_facts_is_text_and_includes_key_numbers():
     assert "read-only" in facts.lower()
 
 
+def test_allowed_numbers_is_curated_from_engine_values_not_prose():
+    ctx = build_context(_dashboard_data())
+    allowed = ctx.allowed_numbers()
+    # Engine quantities are present.
+    assert 3.56 in allowed  # tariff rate
+    assert 46.28 in allowed  # slot cost
+    assert 80.1 in allowed  # expected daily cost
+    # Structural references the model may legitimately name.
+    assert 1.0 in allowed  # slot index 1
+    assert 90.0 in allowed  # slot target SOC
+    # Slot start hour (00:00 -> 0) must NOT leak in as a free integer; the
+    # whitelist is curated, not scraped from the time-bearing prose. No engine
+    # value in this fixture is 0.0, so 0.0 would only appear via a slot time.
+    facts = ctx.to_facts()
+    assert "00:00" in facts  # times still shown for context
+    assert 0.0 not in allowed
+
+
 def test_build_messages_returns_system_and_facts():
     ctx = build_context(_dashboard_data())
     system, user = build_messages(ctx)

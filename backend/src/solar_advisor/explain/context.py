@@ -50,6 +50,35 @@ class ExplanationContext:
     recommendation: RecommendationFact
     disclaimer: str
 
+    def allowed_numbers(self) -> list[float]:
+        """The exact set of numbers the explanation may cite — the engine's
+        quantitative outputs plus the structural references (slot indices, target
+        SOCs) the model legitimately names. Curated here, NOT scraped from prose, so
+        times and incidental digits don't grant the model free numeric range."""
+        nums: list[float] = [
+            self.objective,
+            self.battery_soc,
+            self.pv_power,
+            self.grid_power,
+            self.load_power,
+            self.month_to_date_grid_import_kwh,
+            self.usable_kwh,
+            self.usable_kwh_confidence,
+            self.daily_consumption_kwh,
+            self.daily_consumption_confidence,
+            self.tariff_rate,
+            self.expected_pv_kwh_today,
+            self.recommendation.reserve_target_soc,
+            self.recommendation.grid_charge_kwh,
+            self.recommendation.expected_daily_grid_import_kwh,
+            self.recommendation.expected_daily_cost,
+            self.recommendation.backup_hours,
+            self.recommendation.monthly_cost_so_far,
+        ]
+        for i, s in enumerate(self.slots, start=1):
+            nums.extend([float(i), float(s.target_soc), s.end_soc, s.grid_import_kwh, s.cost])
+        return nums
+
     def to_facts(self) -> str:
         """Serialize the facts as the text block sent to the model. The guard's
         whitelist is derived from exactly this string."""
