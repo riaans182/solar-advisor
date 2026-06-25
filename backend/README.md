@@ -62,6 +62,7 @@ A modern Vue 3 dashboard designed to be easier to read at a glance than the stoc
 - **Explain & Suggest** — a plain-language read of the plan from `/api/explain`, with the
   provenance-withheld warning surfaced.
 - **24-hour trend charts** — hand-rolled SVG line charts for SOC, solar, grid, and load.
+- **Purchase tracker:** log prepaid electricity purchases (date, rand, units); the app graphs the effective R/kWh over time and derives the engine's marginal tariff from your real purchases (lowest effective rate over a trailing window), falling back to the configured rate when no history exists. Writes go only to the app's own database — never to the inverter.
 
 ## Architecture
 
