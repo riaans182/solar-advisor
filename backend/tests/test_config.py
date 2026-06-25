@@ -63,3 +63,17 @@ def test_explain_max_tokens_default_and_env(monkeypatch):
     assert load_config().explain_max_tokens == 2048
     monkeypatch.setenv("SA_EXPLAIN_MAX_TOKENS", "512")
     assert load_config().explain_max_tokens == 512
+
+
+def test_tariff_window_days_defaults_to_90(monkeypatch):
+    monkeypatch.delenv("SA_TARIFF_WINDOW_DAYS", raising=False)
+    from solar_advisor.config import load_config
+
+    assert load_config().tariff_window_days == 90
+
+
+def test_tariff_window_days_from_env(monkeypatch):
+    monkeypatch.setenv("SA_TARIFF_WINDOW_DAYS", "120")
+    from solar_advisor.config import load_config
+
+    assert load_config().tariff_window_days == 120

@@ -38,6 +38,7 @@ class AppConfig:
     forecast_today_kwh: float
     forecast_tomorrow_kwh: float
     daily_consumption_kwh: float = 24.0  # fallback when the estimator's confidence is 0
+    tariff_window_days: int = 90  # trailing window for the data-derived marginal rate
     # Explain layer (Plan D)
     explain_model: str = "claude-haiku-4-5"
     explain_enabled: bool = True
@@ -66,6 +67,7 @@ def load_config() -> AppConfig:
         forecast_today_kwh=float(os.environ.get("SA_FORECAST_TODAY_KWH", "20")),
         forecast_tomorrow_kwh=float(os.environ.get("SA_FORECAST_TOMORROW_KWH", "20")),
         daily_consumption_kwh=float(os.environ.get("SA_DAILY_CONSUMPTION_KWH", "24")),
+        tariff_window_days=int(os.environ.get("SA_TARIFF_WINDOW_DAYS", "90")),
         explain_model=os.environ.get("SA_EXPLAIN_MODEL", "claude-haiku-4-5"),
         explain_enabled=os.environ.get("SA_EXPLAIN_ENABLED", "true").strip().lower() != "false",
         explain_min_interval_s=float(os.environ.get("SA_EXPLAIN_MIN_INTERVAL_S", "10")),
