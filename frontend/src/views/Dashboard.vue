@@ -9,6 +9,7 @@ import RecommendationPanel from '../components/RecommendationPanel.vue'
 import ScheduleTable from '../components/ScheduleTable.vue'
 import ExplainPanel from '../components/ExplainPanel.vue'
 import TrendChart from '../components/TrendChart.vue'
+import TariffBadge from '../components/TariffBadge.vue'
 
 const POLL_MS = 10_000
 const DEBOUNCE_MS = 300
@@ -156,6 +157,11 @@ onBeforeUnmount(() => {
           </div>
 
           <aside class="dash__col dash__col--side">
+            <TariffBadge
+              :rate="dashboard.tariff_rate"
+              :source="dashboard.tariff_source"
+              :source-date="dashboard.tariff_source_date"
+            />
             <ObjectiveSlider v-model="objective" />
 
             <section class="dash__history" aria-label="Recent history">
