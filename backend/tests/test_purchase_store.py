@@ -45,7 +45,7 @@ def test_delete_existing_and_missing(store):
 
 
 def test_note_round_trips(store):
-    saved = store.add(_p(date(2026, 6, 1), note="City of CT prepaid"))
+    store.add(_p(date(2026, 6, 1), note="City of CT prepaid"))
     assert store.list_all()[0].note == "City of CT prepaid"
 
 
