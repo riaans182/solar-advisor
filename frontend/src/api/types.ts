@@ -40,6 +40,9 @@ export interface DashboardView {
   tariff_source_date: string | null
   expected_pv_kwh_today: number
   expected_pv_kwh_tomorrow: number
+  month_spend: number
+  month_projected_cost: number
+  month_balance: number
   slots: SlotView[]
   recommendation: RecommendationView
   disclaimer: string
