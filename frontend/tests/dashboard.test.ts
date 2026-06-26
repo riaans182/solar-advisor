@@ -18,8 +18,11 @@ const DASH = {
   expected_pv_kwh_today: 8,
   expected_pv_kwh_tomorrow: 8,
   month_spend: 1500,
-  month_projected_cost: 1200,
-  month_balance: 300,
+  month_remaining_cost: 0,
+  recommended_slots: [],
+  current_daily_cost: 0,
+  recommended_daily_cost: 0,
+  daily_saving: 0,
   slots: [
     {
       start: '00:00',

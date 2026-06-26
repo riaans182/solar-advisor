@@ -64,8 +64,7 @@ describe('RecommendationPanel', () => {
   const base = {
     recommendation,
     monthSpend: 1500,
-    monthProjectedCost: 1200,
-    monthBalance: 300,
+    monthRemainingCost: 650,
   }
 
   it('reflects new values when the recommendation prop is reassigned', async () => {
@@ -73,21 +72,13 @@ describe('RecommendationPanel', () => {
     expect(w.text()).toContain('R12.34')
     await w.setProps({ recommendation: { ...recommendation, expected_daily_cost: 99.99 } })
     expect(w.text()).toContain('R99.99')
-    expect(w.text()).not.toContain('R12.34')
   })
 
-  it('shows the month projection instead of a bill-so-far', () => {
+  it('shows spent + forward more-to-finish for the month', () => {
     const w = mount(RecommendationPanel, { props: { ...base } })
-    expect(w.text().toLowerCase()).toContain('this month')
     expect(w.text()).toContain('R1500.00')
-    expect(w.text()).toContain('R1200.00')
-    expect(w.text().toLowerCase()).toContain('to spare')
-  })
-
-  it('shows a top-up when projected exceeds spend', () => {
-    const w = mount(RecommendationPanel, { props: { ...base, monthBalance: -250 } })
-    expect(w.text().toLowerCase()).toContain('to top up')
-    expect(w.text()).toContain('R250.00')
+    expect(w.text()).toContain('R650.00')
+    expect(w.text().toLowerCase()).toContain('to finish')
   })
 
   it('explains the flat cost when no grid charging is needed', () => {
@@ -130,8 +121,11 @@ function dash(over: Partial<DashboardView> = {}): DashboardView {
     expected_pv_kwh_today: 20,
     expected_pv_kwh_tomorrow: 20,
     month_spend: 0,
-    month_projected_cost: 0,
-    month_balance: 0,
+    month_remaining_cost: 0,
+    recommended_slots: [],
+    current_daily_cost: 0,
+    recommended_daily_cost: 0,
+    daily_saving: 0,
     slots: [],
     recommendation: {
       reserve_target_soc: 40,

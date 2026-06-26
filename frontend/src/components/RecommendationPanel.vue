@@ -6,8 +6,7 @@ import { formatKwh, formatPercent, formatRand } from '../lib/format'
 const props = defineProps<{
   recommendation: RecommendationView
   monthSpend: number
-  monthProjectedCost: number
-  monthBalance: number
+  monthRemainingCost: number
 }>()
 const r = computed(() => props.recommendation)
 </script>
@@ -44,14 +43,13 @@ const r = computed(() => props.recommendation)
       <div class="metric metric--cost">
         <span class="metric__label">This month</span>
         <span class="metric__value">{{ formatRand(monthSpend) }}</span>
-        <span class="metric__note">spent · projected {{ formatRand(monthProjectedCost) }}</span>
+        <span class="metric__note">spent · ≈ {{ formatRand(monthRemainingCost) }} more to finish</span>
       </div>
     </div>
 
-    <p class="rec__balance" :data-short="monthBalance < 0">
-      <template v-if="monthBalance < 0">≈ {{ formatRand(-monthBalance) }} more to top up this month</template>
-      <template v-else>≈ {{ formatRand(monthBalance) }} to spare this month</template>
-      <span class="rec__balance-note">estimate from your usage so far</span>
+    <p class="rec__balance">
+      ≈ {{ formatRand(monthRemainingCost) }} more to finish the month
+      <span class="rec__balance-note">at today's usage</span>
     </p>
 
     <div

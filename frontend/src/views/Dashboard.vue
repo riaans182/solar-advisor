@@ -6,7 +6,7 @@ import DisclaimerBanner from '../components/DisclaimerBanner.vue'
 import LiveTiles from '../components/LiveTiles.vue'
 import ObjectiveSlider from '../components/ObjectiveSlider.vue'
 import RecommendationPanel from '../components/RecommendationPanel.vue'
-import ScheduleTable from '../components/ScheduleTable.vue'
+import ScheduleCompare from '../components/ScheduleCompare.vue'
 import ExplainPanel from '../components/ExplainPanel.vue'
 import TrendChart from '../components/TrendChart.vue'
 import TariffBadge from '../components/TariffBadge.vue'
@@ -164,10 +164,15 @@ onBeforeUnmount(() => {
             <RecommendationPanel
               :recommendation="dashboard.recommendation"
               :month-spend="dashboard.month_spend"
-              :month-projected-cost="dashboard.month_projected_cost"
-              :month-balance="dashboard.month_balance"
+              :month-remaining-cost="dashboard.month_remaining_cost"
             />
-            <ScheduleTable :slots="dashboard.slots" />
+            <ScheduleCompare
+              :current="dashboard.slots"
+              :recommended="dashboard.recommended_slots"
+              :daily-saving="dashboard.daily_saving"
+              :current-cost="dashboard.current_daily_cost"
+              :recommended-cost="dashboard.recommended_daily_cost"
+            />
             <ExplainPanel :objective="objective" />
           </div>
 
