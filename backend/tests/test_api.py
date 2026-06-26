@@ -118,8 +118,13 @@ def test_dashboard_view_includes_battery_and_conversion_power():
     assert body["conversion_power"] == 75
 
 
-def test_dashboard_view_includes_month_projection_fields():
+def test_dashboard_view_includes_schedule_diff_and_month_remaining():
     body = _client(_ready_state()).get("/api/dashboard?objective=0.5").json()
-    assert "month_spend" in body
-    assert "month_projected_cost" in body
-    assert "month_balance" in body
+    assert "recommended_slots" in body
+    assert len(body["recommended_slots"]) == len(body["slots"])
+    assert "current_daily_cost" in body
+    assert "recommended_daily_cost" in body
+    assert "daily_saving" in body
+    assert "month_remaining_cost" in body
+    assert "month_projected_cost" not in body
+    assert "month_balance" not in body

@@ -67,8 +67,11 @@ class DashboardView(BaseModel):
     expected_pv_kwh_today: float
     expected_pv_kwh_tomorrow: float
     month_spend: float
-    month_projected_cost: float
-    month_balance: float
+    month_remaining_cost: float
+    recommended_slots: list[SlotView]
+    current_daily_cost: float
+    recommended_daily_cost: float
+    daily_saving: float
     slots: list[SlotView]
     recommendation: RecommendationView
     disclaimer: str

@@ -24,6 +24,7 @@ from solar_advisor.api.schemas import (
 )
 from solar_advisor.config import AppConfig, load_config
 from solar_advisor.domain.purchase import Purchase
+from solar_advisor.engine.schedule_eval import SlotAssessment
 from solar_advisor.estimation.estimator import ParameterEstimator
 from solar_advisor.explain.client import Explainer, anthropic_complete
 from solar_advisor.explain.context import build_context
@@ -85,6 +86,19 @@ def _purchase_view(p: Purchase) -> PurchaseView:
     )
 
 
+def _slot_view(a: SlotAssessment) -> SlotView:
+    return SlotView(
+        start=a.slot.start.isoformat(timespec="minutes"),
+        end=a.slot.end.isoformat(timespec="minutes"),
+        target_soc=a.slot.target_soc,
+        grid_charge=a.slot.grid_charge,
+        behavior=a.behavior.value,
+        end_soc=round(a.end_soc, 1),
+        grid_import_kwh=round(a.grid_import_kwh, 2),
+        cost=round(a.cost, 2),
+    )
+
+
 def _to_view(data: DashboardData) -> DashboardView:
     return DashboardView(
         objective=data.objective,
@@ -107,21 +121,12 @@ def _to_view(data: DashboardData) -> DashboardView:
         expected_pv_kwh_today=round(data.expected_pv_kwh_today, 2),
         expected_pv_kwh_tomorrow=round(data.expected_pv_kwh_tomorrow, 2),
         month_spend=round(data.month_spend),
-        month_projected_cost=round(data.month_projected_cost),
-        month_balance=round(data.month_balance),
-        slots=[
-            SlotView(
-                start=a.slot.start.isoformat(timespec="minutes"),
-                end=a.slot.end.isoformat(timespec="minutes"),
-                target_soc=a.slot.target_soc,
-                grid_charge=a.slot.grid_charge,
-                behavior=a.behavior.value,
-                end_soc=round(a.end_soc, 1),
-                grid_import_kwh=round(a.grid_import_kwh, 2),
-                cost=round(a.cost, 2),
-            )
-            for a in data.slot_assessments
-        ],
+        month_remaining_cost=round(data.month_remaining_cost),
+        recommended_slots=[_slot_view(a) for a in data.recommended_assessments],
+        current_daily_cost=round(data.current_daily_cost, 2),
+        recommended_daily_cost=round(data.recommended_daily_cost, 2),
+        daily_saving=round(data.daily_saving, 2),
+        slots=[_slot_view(a) for a in data.slot_assessments],
         recommendation=RecommendationView(
             reserve_target_soc=round(data.recommendation.reserve_target_soc, 1),
             enable_overnight_grid_charge=data.recommendation.enable_overnight_grid_charge,
