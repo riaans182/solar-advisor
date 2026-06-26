@@ -62,4 +62,10 @@ describe('PurchaseCharts', () => {
     // viewBox H=110, PAD=10 -> baseline y=100. Padding must keep all points strictly above it.
     expect(Math.max(...ys)).toBeLessThan(100)
   })
+
+  it('shows a rate tooltip on pointer move over the rate chart', async () => {
+    const w = mount(PurchaseCharts, { props: { purchases, currentRate: 3.3 } })
+    await w.get('[data-test="rate-svg"]').trigger('pointermove', { clientX: 0 })
+    expect(w.find('[data-test="pc-tip"]').exists()).toBe(true)
+  })
 })

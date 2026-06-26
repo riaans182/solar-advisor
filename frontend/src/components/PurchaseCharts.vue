@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { PurchaseView } from '../api/types'
-import { formatRatePerKwh } from '../lib/format'
+import { formatDate, formatRatePerKwh } from '../lib/format'
 
 const props = defineProps<{
   purchases: PurchaseView[]
@@ -66,6 +66,23 @@ function bars(values: number[]): { x: number; y: number; w: number; h: number }[
 const spendBars = computed(() => bars(spend.value))
 const unitsBars = computed(() => bars(units.value))
 const hasData = computed(() => props.purchases.length > 0)
+
+const hover = ref<number | null>(null)
+
+function onMove(e: PointerEvent): void {
+  const n = chrono.value.length
+  if (!n) return
+  const rect = (e.currentTarget as SVGGraphicsElement).getBoundingClientRect()
+  const rel = rect.width > 0 ? (e.clientX - rect.left) / rect.width : 0
+  hover.value = Math.max(0, Math.min(n - 1, Math.round(rel * (n - 1))))
+}
+
+function onLeave(): void {
+  hover.value = null
+}
+
+const hoverX = computed(() => (hover.value === null ? 0 : xFor(hover.value, chrono.value.length)))
+const hoverItem = computed(() => (hover.value === null ? null : chrono.value[hover.value]))
 </script>
 
 <template>
@@ -79,10 +96,13 @@ const hasData = computed(() => props.purchases.length > 0)
           <span class="pc__cap-now">now {{ formatRatePerKwh(currentRate) }}</span>
         </figcaption>
         <svg
+          data-test="rate-svg"
           :viewBox="`0 0 ${W} ${H}`"
           class="pc__svg"
           role="img"
           aria-label="Effective rate over time"
+          @pointermove="onMove"
+          @pointerleave="onLeave"
         >
           <line
             data-test="rate-ref"
@@ -105,7 +125,26 @@ const hasData = computed(() => props.purchases.length > 0)
             stroke-linejoin="round"
             vector-effect="non-scaling-stroke"
           />
+          <line
+            v-if="hoverItem"
+            :x1="hoverX"
+            :x2="hoverX"
+            :y1="PAD"
+            :y2="H - PAD"
+            stroke="var(--sa-text-dim, #9aa6b6)"
+            stroke-width="1"
+            stroke-dasharray="3 3"
+            vector-effect="non-scaling-stroke"
+          />
         </svg>
+        <div
+          v-if="hoverItem"
+          data-test="pc-tip"
+          class="pc__tip"
+          :style="{ left: `${(hoverX / W) * 100}%` }"
+        >
+          {{ formatRatePerKwh(hoverItem.effective_rate) }} · {{ formatDate(hoverItem.purchased_at) }}
+        </div>
       </figure>
 
       <figure class="pc__chart">
@@ -181,7 +220,21 @@ const hasData = computed(() => props.purchases.length > 0)
   gap: 0.9rem;
 }
 .pc__chart {
+  position: relative;
   margin: 0;
+}
+.pc__tip {
+  position: absolute;
+  top: 1.4rem;
+  transform: translateX(-50%);
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  background: var(--sa-bg, #0f141b);
+  border: 1px solid var(--sa-line, #273140);
+  color: var(--sa-text, #eef2f7);
+  font-size: 0.72rem;
+  white-space: nowrap;
+  pointer-events: none;
 }
 .pc__cap {
   display: flex;
