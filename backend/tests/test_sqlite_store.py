@@ -1,8 +1,10 @@
 # tests/test_sqlite_store.py
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 import pytest
 
+from solar_advisor.domain.purchase import Purchase
+from solar_advisor.storage.purchase_store import SqlitePurchaseStore
 from solar_advisor.storage.sqlite_store import SqliteTelemetryStore
 from tests.conftest import make_telemetry
 
@@ -101,3 +103,18 @@ def test_query_bucketed_averages_within_buckets(tmp_path):
 def test_query_bucketed_empty_range_returns_empty(store):
     out = store.query_bucketed(datetime(2026, 1, 1), datetime(2026, 1, 2), 3600)
     assert out == []
+
+
+def test_prune_does_not_touch_purchases(tmp_path):
+    db = tmp_path / "t.db"
+    tstore = SqliteTelemetryStore(db, min_interval=timedelta(0))
+    pstore = SqlitePurchaseStore(db)  # same DB file, separate table
+
+    tstore.save(make_telemetry(datetime(2026, 1, 1, 8, 0, 0)))  # old telemetry
+    pstore.add(Purchase(purchased_at=date(2026, 1, 1), rand=100.0, units_kwh=50.0, note=None))
+
+    removed = tstore.prune_before(datetime(2026, 6, 1))
+
+    assert removed == 1  # the old telemetry row was deleted
+    assert tstore.query_range(datetime(2025, 1, 1), datetime(2027, 1, 1)) == []
+    assert len(pstore.list_all()) == 1  # the purchase survived the prune
