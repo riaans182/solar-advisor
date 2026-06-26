@@ -41,8 +41,11 @@ export interface DashboardView {
   expected_pv_kwh_today: number
   expected_pv_kwh_tomorrow: number
   month_spend: number
-  month_projected_cost: number
-  month_balance: number
+  month_remaining_cost: number
+  recommended_slots: SlotView[]
+  current_daily_cost: number
+  recommended_daily_cost: number
+  daily_saving: number
   slots: SlotView[]
   recommendation: RecommendationView
   disclaimer: string
