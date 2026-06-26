@@ -161,7 +161,12 @@ onBeforeUnmount(() => {
 
         <div class="dash__columns">
           <div class="dash__col dash__col--main">
-            <RecommendationPanel :recommendation="dashboard.recommendation" />
+            <RecommendationPanel
+              :recommendation="dashboard.recommendation"
+              :month-spend="dashboard.month_spend"
+              :month-projected-cost="dashboard.month_projected_cost"
+              :month-balance="dashboard.month_balance"
+            />
             <ScheduleTable :slots="dashboard.slots" />
             <ExplainPanel :objective="objective" />
           </div>

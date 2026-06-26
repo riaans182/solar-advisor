@@ -61,17 +61,43 @@ const recommendation: RecommendationView = {
 }
 
 describe('RecommendationPanel', () => {
-  it('reflects new values when the recommendation prop is reassigned', async () => {
-    const w = mount(RecommendationPanel, { props: { recommendation } })
-    expect(w.text()).toContain('R12.34')
+  const base = {
+    recommendation,
+    monthSpend: 1500,
+    monthProjectedCost: 1200,
+    monthBalance: 300,
+  }
 
-    const next: RecommendationView = {
-      ...recommendation,
-      expected_daily_cost: 99.99,
-    }
-    await w.setProps({ recommendation: next })
+  it('reflects new values when the recommendation prop is reassigned', async () => {
+    const w = mount(RecommendationPanel, { props: { ...base } })
+    expect(w.text()).toContain('R12.34')
+    await w.setProps({ recommendation: { ...recommendation, expected_daily_cost: 99.99 } })
     expect(w.text()).toContain('R99.99')
     expect(w.text()).not.toContain('R12.34')
+  })
+
+  it('shows the month projection instead of a bill-so-far', () => {
+    const w = mount(RecommendationPanel, { props: { ...base } })
+    expect(w.text().toLowerCase()).toContain('this month')
+    expect(w.text()).toContain('R1500.00')
+    expect(w.text()).toContain('R1200.00')
+    expect(w.text().toLowerCase()).toContain('to spare')
+  })
+
+  it('shows a top-up when projected exceeds spend', () => {
+    const w = mount(RecommendationPanel, { props: { ...base, monthBalance: -250 } })
+    expect(w.text().toLowerCase()).toContain('to top up')
+    expect(w.text()).toContain('R250.00')
+  })
+
+  it('explains the flat cost when no grid charging is needed', () => {
+    const w = mount(RecommendationPanel, {
+      props: {
+        ...base,
+        recommendation: { ...recommendation, enable_overnight_grid_charge: false, grid_charge_kwh: 0 },
+      },
+    })
+    expect(w.text().toLowerCase()).toContain("won't change")
   })
 })
 

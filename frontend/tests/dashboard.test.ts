@@ -17,6 +17,9 @@ const DASH = {
   tariff_rate: 3.56,
   expected_pv_kwh_today: 8,
   expected_pv_kwh_tomorrow: 8,
+  month_spend: 1500,
+  month_projected_cost: 1200,
+  month_balance: 300,
   slots: [
     {
       start: '00:00',

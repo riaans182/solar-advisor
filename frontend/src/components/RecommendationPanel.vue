@@ -3,7 +3,12 @@ import { computed } from 'vue'
 import type { RecommendationView } from '../api/types'
 import { formatKwh, formatPercent, formatRand } from '../lib/format'
 
-const props = defineProps<{ recommendation: RecommendationView }>()
+const props = defineProps<{
+  recommendation: RecommendationView
+  monthSpend: number
+  monthProjectedCost: number
+  monthBalance: number
+}>()
 const r = computed(() => props.recommendation)
 </script>
 
@@ -37,11 +42,17 @@ const r = computed(() => props.recommendation)
       </div>
 
       <div class="metric metric--cost">
-        <span class="metric__label">Bill so far</span>
-        <span class="metric__value">{{ formatRand(r.monthly_cost_so_far) }}</span>
-        <span class="metric__note">month to date</span>
+        <span class="metric__label">This month</span>
+        <span class="metric__value">{{ formatRand(monthSpend) }}</span>
+        <span class="metric__note">spent · projected {{ formatRand(monthProjectedCost) }}</span>
       </div>
     </div>
+
+    <p class="rec__balance" :data-short="monthBalance < 0">
+      <template v-if="monthBalance < 0">≈ {{ formatRand(-monthBalance) }} more to top up this month</template>
+      <template v-else>≈ {{ formatRand(monthBalance) }} to spare this month</template>
+      <span class="rec__balance-note">estimate from your usage so far</span>
+    </p>
 
     <div
       class="rec__charge"
@@ -54,11 +65,14 @@ const r = computed(() => props.recommendation)
         </svg>
       </span>
       <span v-if="r.enable_overnight_grid_charge" class="rec__charge-text">
-        Overnight grid charge advised —
-        <strong>{{ formatKwh(r.grid_charge_kwh) }}</strong> from the grid buys resilience at a cost.
+        Set your inverter to grid-charge to ~<strong>{{ formatPercent(r.reserve_target_soc) }}</strong>
+        overnight — about {{ formatKwh(r.grid_charge_kwh) }} from the grid buys ~{{ r.backup_hours.toFixed(1) }} h
+        of backup at a cost.
       </span>
       <span v-else class="rec__charge-text">
-        No overnight grid charge needed — solar should cover the reserve.
+        No grid-charging needed — solar &amp; battery cover your
+        {{ formatPercent(r.reserve_target_soc) }} reserve. Today's cost won't change as you move the
+        slider until backup needs grid energy.
       </span>
     </div>
   </section>
@@ -166,6 +180,26 @@ const r = computed(() => props.recommendation)
 
 .metric__note {
   font-size: 0.76rem;
+  color: var(--sa-text-dim, #9aa6b6);
+}
+
+.rec__balance {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin: 0.9rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--sa-good, #34d399);
+}
+
+.rec__balance[data-short='true'] {
+  color: var(--sa-warn, #d8a83a);
+}
+
+.rec__balance-note {
+  font-size: 0.74rem;
+  font-weight: 400;
   color: var(--sa-text-dim, #9aa6b6);
 }
 
