@@ -43,6 +43,9 @@ def _dashboard_data():
         conversion_power=75.0,
         expected_pv_kwh_today=8.0,
         expected_pv_kwh_tomorrow=8.0,
+        month_spend=0.0,
+        month_projected_cost=0.0,
+        month_balance=0.0,
         disclaimer=ADVISORY_DISCLAIMER,
     )
 
