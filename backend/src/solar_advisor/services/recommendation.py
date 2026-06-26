@@ -17,7 +17,7 @@ from solar_advisor.estimation.estimator import EstimatedParameters
 from solar_advisor.forecast.provider import ForecastProvider
 from solar_advisor.ingest.live import LiveState
 from solar_advisor.tariff.derivation import DerivedRate
-from solar_advisor.tariff.provider import TariffProvider
+from solar_advisor.tariff.provider import PurchaseReader, TariffProvider
 
 ADVISORY_DISCLAIMER = (
     "Advisory only. This app is read-only against your inverter; apply any changes yourself."
@@ -43,6 +43,9 @@ class DashboardData:
     conversion_power: float
     expected_pv_kwh_today: float
     expected_pv_kwh_tomorrow: float
+    month_spend: float
+    month_projected_cost: float
+    month_balance: float
     disclaimer: str
 
 
@@ -60,11 +63,13 @@ class RecommendationService:
         estimator: _Estimator,
         forecast: ForecastProvider,
         tariff_provider: TariffProvider | None = None,
+        purchases: PurchaseReader | None = None,
     ) -> None:
         self._config = config
         self._estimator = estimator
         self._forecast = forecast
         self._tariff_provider = tariff_provider
+        self._purchases = purchases
 
     def build(self, state: LiveState, objective: float | None) -> DashboardData:
         if state.telemetry is None or state.schedule is None:
@@ -126,6 +131,21 @@ class RecommendationService:
             - telemetry.battery_power
             - telemetry.load_power
         )
+        today = telemetry.ts.date()
+        first_of_month = today.replace(day=1)
+        month_spend = (
+            sum(
+                p.rand
+                for p in self._purchases.list_since(first_of_month)
+                if p.purchased_at.year == today.year and p.purchased_at.month == today.month
+            )
+            if self._purchases is not None
+            else 0.0
+        )
+        month_projected_cost = (
+            telemetry.month_to_date_grid_import_kwh / today.day * days_in_month * derived.rate
+        )
+        month_balance = month_spend - month_projected_cost
         return DashboardData(
             telemetry=telemetry,
             objective=obj,
@@ -141,5 +161,8 @@ class RecommendationService:
             conversion_power=conversion_power,
             expected_pv_kwh_today=forecast.expected_pv_kwh_today,
             expected_pv_kwh_tomorrow=forecast.expected_pv_kwh_tomorrow,
+            month_spend=month_spend,
+            month_projected_cost=month_projected_cost,
+            month_balance=month_balance,
             disclaimer=ADVISORY_DISCLAIMER,
         )
