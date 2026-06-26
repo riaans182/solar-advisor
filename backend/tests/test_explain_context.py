@@ -43,14 +43,18 @@ def _dashboard_data():
         conversion_power=75.0,
         expected_pv_kwh_today=8.0,
         expected_pv_kwh_tomorrow=8.0,
-        month_spend=0.0,
-        month_remaining_cost=0.0,
+        month_spend=2350.0,
+        month_remaining_cost=300.0,
         recommended_assessments=[],
-        current_daily_cost=0.0,
-        recommended_daily_cost=0.0,
-        daily_saving=0.0,
+        current_daily_cost=54.86,
+        recommended_daily_cost=5.0,
+        daily_saving=49.86,
         disclaimer=ADVISORY_DISCLAIMER,
     )
+
+
+def _context():
+    return build_context(_dashboard_data())
 
 
 def test_build_context_carries_facts():
@@ -107,3 +111,25 @@ def test_build_messages_returns_system_and_facts():
     assert "advisory" in system.lower()
     # The user message is the fact block — the guard whitelists exactly this.
     assert user == ctx.to_facts()
+
+
+def test_allowed_numbers_includes_action_and_month_figures():
+    ctx = _context()
+    allowed = ctx.allowed_numbers()
+    for v in [
+        ctx.daily_saving,
+        ctx.current_daily_cost,
+        ctx.recommended_daily_cost,
+        ctx.month_spend,
+        ctx.month_remaining_cost,
+        100.0,
+        24.0,
+    ]:
+        assert any(abs(v - a) < 1e-9 for a in allowed)
+
+
+def test_to_facts_mentions_saving_and_month():
+    ctx = _context()
+    facts = ctx.to_facts()
+    assert "saving" in facts.lower()
+    assert "month" in facts.lower()

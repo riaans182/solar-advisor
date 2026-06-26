@@ -1,6 +1,7 @@
 # src/solar_advisor/explain/context.py
 from __future__ import annotations
 
+import calendar
 from dataclasses import dataclass
 
 from solar_advisor.services.recommendation import DashboardData
@@ -46,6 +47,12 @@ class ExplanationContext:
     daily_consumption_confidence: float
     tariff_rate: float
     expected_pv_kwh_today: float
+    current_daily_cost: float
+    recommended_daily_cost: float
+    daily_saving: float
+    month_spend: float
+    month_remaining_cost: float
+    days_in_month: int
     slots: list[SlotFact]
     recommendation: RecommendationFact
     disclaimer: str
@@ -68,6 +75,11 @@ class ExplanationContext:
             self.daily_consumption_confidence,
             self.tariff_rate,
             self.expected_pv_kwh_today,
+            self.current_daily_cost,
+            self.recommended_daily_cost,
+            self.daily_saving,
+            self.month_spend,
+            self.month_remaining_cost,
             self.recommendation.reserve_target_soc,
             self.recommendation.grid_charge_kwh,
             self.recommendation.expected_daily_grid_import_kwh,
@@ -78,6 +90,9 @@ class ExplanationContext:
         # Confidences may legitimately be restated as percentages (e.g. 0.6 -> "60%").
         nums.append(float(round(self.usable_kwh_confidence * 100)))
         nums.append(float(round(self.daily_consumption_confidence * 100)))
+        # Structural constants the model legitimately names: percent ceiling, hours
+        # in a day, and the number of days in the current month.
+        nums.extend([100.0, 24.0, float(self.days_in_month)])
         for i, s in enumerate(self.slots, start=1):
             nums.extend([float(i), float(s.target_soc), s.end_soc, s.grid_import_kwh, s.cost])
         return nums
@@ -119,6 +134,11 @@ class ExplanationContext:
             f"- expected daily cost: R{r.expected_daily_cost}",
             f"- backup runtime at reserve: {r.backup_hours} hours",
             f"- month-to-date bill: R{r.monthly_cost_so_far}",
+            "RECOMMENDED ACTION (engine output):",
+            f"- following the recommended schedule costs R{self.recommended_daily_cost}/day "
+            f"vs R{self.current_daily_cost}/day now (saving R{self.daily_saving}/day)",
+            f"- prepaid this month: spent R{self.month_spend}; about "
+            f"R{self.month_remaining_cost} more to finish the month at today's usage",
             f"DISCLAIMER: {self.disclaimer}",
         ]
         return "\n".join(lines)
@@ -138,6 +158,12 @@ def build_context(data: DashboardData) -> ExplanationContext:
         daily_consumption_confidence=round(data.daily_consumption_confidence, 2),
         tariff_rate=data.tariff_rate,
         expected_pv_kwh_today=round(data.expected_pv_kwh_today, 2),
+        current_daily_cost=round(data.current_daily_cost, 2),
+        recommended_daily_cost=round(data.recommended_daily_cost, 2),
+        daily_saving=round(data.daily_saving, 2),
+        month_spend=round(data.month_spend),
+        month_remaining_cost=round(data.month_remaining_cost),
+        days_in_month=calendar.monthrange(data.telemetry.ts.year, data.telemetry.ts.month)[1],
         slots=[
             SlotFact(
                 start=a.slot.start.isoformat(timespec="minutes"),
