@@ -22,8 +22,10 @@ const socTone = computed(() => {
 
 const batteryFlow = computed(() => {
   const p = props.dashboard.battery_power
-  if (p > 1) return `charging ${Math.round(p)} W`
-  if (p < -1) return `discharging ${Math.round(-p)} W`
+  const capWh = props.dashboard.usable_kwh * 1000
+  const rate = capWh > 0 ? (p / capWh) * 100 : 0 // %/h
+  if (p > 1) return `charging ${Math.round(p)} W · +${rate.toFixed(1)}%/h`
+  if (p < -1) return `discharging ${Math.round(-p)} W · ${rate.toFixed(1)}%/h`
   return 'idle'
 })
 

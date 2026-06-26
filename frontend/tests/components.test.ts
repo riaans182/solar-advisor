@@ -103,6 +103,9 @@ function dash(over: Partial<DashboardView> = {}): DashboardView {
     tariff_source_date: null,
     expected_pv_kwh_today: 20,
     expected_pv_kwh_tomorrow: 20,
+    month_spend: 0,
+    month_projected_cost: 0,
+    month_balance: 0,
     slots: [],
     recommendation: {
       reserve_target_soc: 40,
@@ -133,5 +136,11 @@ describe('LiveTiles battery flow + conversion', () => {
     const w = mount(LiveTiles, { props: { dashboard: dash({ conversion_power: -12 }) } })
     expect(w.text().toLowerCase()).toContain('conversion')
     expect(w.text()).toContain('0 W')
+  })
+
+  it('shows a %/hour rate alongside the battery wattage', () => {
+    const w = mount(LiveTiles, { props: { dashboard: dash({ battery_power: 420, usable_kwh: 15 }) } })
+    expect(w.text()).toContain('%/h')
+    expect(w.text()).toContain('2.8')
   })
 })
