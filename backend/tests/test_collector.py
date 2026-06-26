@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock
 
 import aiomqtt
 import pytest
@@ -61,7 +62,7 @@ async def test_run_reconnects_after_mqtt_error(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(collector.asyncio, "sleep", _no_sleep)
 
     with pytest.raises(_StopTest):
-        await collector.run(source, store, max_backoff=30.0)
+        await collector.run(source, store, max_backoff=30.0, prune_interval=None)
 
     # First stream() raised MqttError; the loop retried and the second stream()
     # produced exactly the one post-reconnect snapshot.
@@ -116,3 +117,27 @@ async def test_prune_loop_prunes_every_cycle() -> None:
     # Pruned once per cycle: cycles 1, 2, 3 each prune, the 3rd sleep stops the loop.
     expected = fixed_now - timedelta(days=7)
     assert store.prune_cutoffs == [expected, expected, expected]
+
+
+async def test_run_starts_prune_loop_with_retention(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_prune = AsyncMock()
+    monkeypatch.setattr(collector, "_prune_loop", fake_prune)
+
+    async def _no_sleep(_seconds: float) -> None:
+        return None
+
+    monkeypatch.setattr(collector.asyncio, "sleep", _no_sleep)
+
+    source = _FakeSource()
+    store = _FakeStore()
+
+    with pytest.raises(_StopTest):
+        await collector.run(
+            source, store, max_backoff=30.0, retention_days=30, prune_interval=123.0
+        )
+
+    fake_prune.assert_called_once()
+    args, _kwargs = fake_prune.call_args
+    assert args[0] is store
+    assert args[1] == timedelta(days=30)
+    assert args[2] == 123.0

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 import sys
 from collections.abc import Awaitable, Callable
@@ -10,6 +11,7 @@ from pathlib import Path
 
 import aiomqtt
 
+from solar_advisor.config import load_config
 from solar_advisor.ingest.mqtt_client import ReadOnlyMqttClient
 from solar_advisor.ingest.source import TelemetrySource
 from solar_advisor.storage.sqlite_store import SqliteTelemetryStore
@@ -49,6 +51,8 @@ async def run(
     store: TelemetryStore | None = None,
     *,
     max_backoff: float = 30.0,
+    retention_days: int = 90,
+    prune_interval: float | None = _PRUNE_INTERVAL_S,
 ) -> None:
     if source is None:
         source = ReadOnlyMqttClient(
@@ -60,23 +64,36 @@ async def run(
     if store is None:
         store = SqliteTelemetryStore(Path(os.environ.get("SA_DB_PATH", "solar_advisor.db")))
 
-    backoff = 1.0
-    while True:
-        try:
-            async for snapshot in source.stream():
-                store.save(snapshot)  # False (downsampled) is normal; ignore.
-                backoff = 1.0  # Reset after any successful message.
-        except aiomqtt.MqttError as exc:
-            print(
-                f"collector: broker connection lost ({exc}); reconnecting in {backoff:.0f}s",
-                file=sys.stderr,
-            )
-            await asyncio.sleep(backoff)
-            backoff = min(backoff * 2, max_backoff)
+    prune_task: asyncio.Task[None] | None = None
+    if prune_interval is not None:
+        prune_task = asyncio.create_task(
+            _prune_loop(store, timedelta(days=retention_days), prune_interval)
+        )
+
+    try:
+        backoff = 1.0
+        while True:
+            try:
+                async for snapshot in source.stream():
+                    store.save(snapshot)  # False (downsampled) is normal; ignore.
+                    backoff = 1.0  # Reset after any successful message.
+            except aiomqtt.MqttError as exc:
+                print(
+                    f"collector: broker connection lost ({exc}); reconnecting in {backoff:.0f}s",
+                    file=sys.stderr,
+                )
+                await asyncio.sleep(backoff)
+                backoff = min(backoff * 2, max_backoff)
+    finally:
+        if prune_task is not None:
+            prune_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await prune_task
 
 
 def main() -> None:
-    asyncio.run(run())
+    cfg = load_config()
+    asyncio.run(run(retention_days=cfg.telemetry_retention_days))
 
 
 if __name__ == "__main__":
