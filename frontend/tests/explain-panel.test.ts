@@ -11,19 +11,20 @@ function stubFetch(body: unknown, status = 200) {
 }
 afterEach(() => vi.restoreAllMocks())
 
-it('shows a withheld warning when guard_ok is false', async () => {
+it('shows the built-in summary cleanly (no alarming withheld box) when not generated', async () => {
   stubFetch({
-    explanation: 'An explanation could not be verified...',
-    generated: true,
+    explanation: '## Built-in\nSwitch off grid-charge to save R46/day.',
+    generated: false,
     guard_ok: false,
-    unverified_numbers: [777],
+    unverified_numbers: [999],
     disclaimer: 'Advisory only.',
   })
   const w = mount(ExplainPanel, { props: { objective: 0.5 } })
   await w.get('button').trigger('click')
   await flushPromises()
-  expect(w.text().toLowerCase()).toContain('withheld')
-  expect(w.text()).toContain('777')
+  expect(w.text()).toContain('Switch off grid-charge')
+  expect(w.text()).toContain('Built-in summary')
+  expect(w.text().toLowerCase()).not.toContain('withheld')
 })
 
 it('renders a generated explanation', async () => {

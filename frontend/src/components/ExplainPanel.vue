@@ -55,41 +55,15 @@ async function explain() {
 
     <!-- Result -->
     <template v-else-if="result">
-      <!-- Provenance guard tripped: explanation withheld -->
-      <div v-if="!result.guard_ok" class="explain__withheld" role="alert">
-        <span class="explain__withheld-head">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M12 9v4M12 17h.01" stroke-linecap="round" />
-            <path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0Z" stroke-linejoin="round" />
-          </svg>
-          Explanation withheld
-        </span>
-        <p class="explain__withheld-body">
-          The generated text cited numbers we couldn't verify against the engine, so it was
-          withheld to avoid showing you unverified figures.
-        </p>
-        <p
-          v-if="result.unverified_numbers.length"
-          class="explain__withheld-nums"
-        >
-          Unverified numbers:
-          <code
-            v-for="n in result.unverified_numbers"
-            :key="n"
-            class="explain__num"
-            >{{ n }}</code
-          >
-        </p>
-      </div>
+      <!-- A generated, provenance-verified explanation -->
+      <p v-if="result.generated" class="explain__body">{{ result.explanation }}</p>
 
-      <!-- Not generated: informational note (AI off / rate-limited / unavailable) -->
-      <div v-else-if="!result.generated" class="explain__note" role="status">
-        <span class="explain__note-tag">Note</span>
+      <!-- Built-in deterministic summary (AI off / unavailable / draft set aside).
+           Still a real, engine-verified explanation — shown plainly, not as an error. -->
+      <div v-else class="explain__note" role="status">
+        <span class="explain__note-tag">Built-in summary</span>
         <p class="explain__note-body">{{ result.explanation }}</p>
       </div>
-
-      <!-- Generated and verified -->
-      <p v-else class="explain__body">{{ result.explanation }}</p>
 
       <p class="explain__disclaimer">{{ result.disclaimer }}</p>
     </template>
