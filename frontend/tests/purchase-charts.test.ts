@@ -68,4 +68,12 @@ describe('PurchaseCharts', () => {
     await w.get('[data-test="rate-svg"]').trigger('pointermove', { clientX: 0 })
     expect(w.find('[data-test="pc-tip"]').exists()).toBe(true)
   })
+
+  it('clears the rate tooltip without error when purchases shrink past the hovered index', async () => {
+    const w = mount(PurchaseCharts, { props: { purchases, currentRate: 3.3 } })
+    await w.get('[data-test="rate-svg"]').trigger('pointermove', { clientX: 0 })
+    expect(w.find('[data-test="pc-tip"]').exists()).toBe(true)
+    await w.setProps({ purchases: [] })
+    expect(w.find('[data-test="pc-tip"]').exists()).toBe(false)
+  })
 })

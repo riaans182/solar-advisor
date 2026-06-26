@@ -63,3 +63,16 @@ it('shows a tooltip with the value on pointer move and hides on leave', async ()
   await svg.trigger('pointerleave')
   expect(w.find('[data-test="chart-tip"]').exists()).toBe(false)
 })
+
+it('clears the hover tooltip without error when points shrink past the hovered index', async () => {
+  const points = [
+    { ts: '2026-06-26T08:00:00+00:00', battery_soc: 40, pv_power: 0, grid_power: 0, load_power: 0, battery_power: 0 },
+    { ts: '2026-06-26T12:00:00+00:00', battery_soc: 90, pv_power: 0, grid_power: 0, load_power: 0, battery_power: 0 },
+  ]
+  const w = mount(TrendChart, { props: { points, metric: 'battery_soc', label: 'Battery SOC', unit: '%' } })
+  await w.get('svg.chart__svg').trigger('pointermove', { clientX: 0 })
+  expect(w.find('[data-test="chart-tip"]').exists()).toBe(true)
+  // History range switch → fewer/zero points while hovering must not throw.
+  await w.setProps({ points: [] })
+  expect(w.find('[data-test="chart-tip"]').exists()).toBe(false)
+})

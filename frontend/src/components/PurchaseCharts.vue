@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { PurchaseView } from '../api/types'
 import { formatDate, formatRatePerKwh } from '../lib/format'
 
@@ -80,6 +80,13 @@ function onMove(e: PointerEvent): void {
 function onLeave(): void {
   hover.value = null
 }
+
+watch(
+  () => props.purchases.length,
+  (n) => {
+    if (hover.value !== null && hover.value >= n) hover.value = null
+  },
+)
 
 const hoverX = computed(() => (hover.value === null ? 0 : xFor(hover.value, chrono.value.length)))
 const hoverItem = computed(() => (hover.value === null ? null : chrono.value[hover.value]))

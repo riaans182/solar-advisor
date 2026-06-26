@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { HistoryPoint } from '../api/types'
 
 type Metric = 'battery_soc' | 'pv_power' | 'grid_power' | 'load_power'
@@ -82,6 +82,13 @@ function onMove(e: PointerEvent): void {
 function onLeave(): void {
   hover.value = null
 }
+
+watch(
+  () => props.points.length,
+  (n) => {
+    if (hover.value !== null && hover.value >= n) hover.value = null
+  },
+)
 
 const hoverPoint = computed(() => (hover.value === null ? null : project(hover.value)))
 
