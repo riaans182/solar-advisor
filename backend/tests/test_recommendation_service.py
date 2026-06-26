@@ -191,5 +191,7 @@ def test_forward_month_figure_uses_daily_import_not_mtd():
     )
     data = svc.build(_live_state(), objective=0.5)
     days_remaining = 30 - 22 + 1
-    expected = data.recommendation.expected_daily_grid_import_kwh * days_remaining * data.tariff_rate
+    expected = (
+        data.recommendation.expected_daily_grid_import_kwh * days_remaining * data.tariff_rate
+    )
     assert round(data.month_remaining_cost, 2) == round(expected, 2)
