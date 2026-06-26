@@ -160,7 +160,7 @@ def build_app(state: LiveState, config: AppConfig | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["http://localhost:5173"],  # Vite dev server (Plan E)
-        allow_methods=["GET", "POST", "DELETE"],  # POST/DELETE used only by /api/purchases
+        allow_methods=["GET", "POST", "PUT", "DELETE"],  # POST/PUT/DELETE: /api/purchases only
         allow_headers=["*"],
     )
 
@@ -247,6 +247,25 @@ def build_app(state: LiveState, config: AppConfig | None = None) -> FastAPI:
             )
         )
         return _purchase_view(saved)
+
+    @app.put("/api/purchases/{purchase_id}", response_model=PurchaseView)
+    def update_purchase(
+        purchase_id: int,
+        body: PurchaseCreate,
+        store: PurchaseStore = Depends(get_purchase_store),  # noqa: B008
+    ) -> PurchaseView:
+        updated = store.update(
+            purchase_id,
+            Purchase(
+                purchased_at=body.purchased_at,
+                rand=body.rand,
+                units_kwh=body.units_kwh,
+                note=body.note,
+            ),
+        )
+        if updated is None:
+            raise HTTPException(status_code=404, detail="no such purchase")
+        return _purchase_view(updated)
 
     @app.get("/api/purchases", response_model=PurchaseListView)
     def list_purchases(

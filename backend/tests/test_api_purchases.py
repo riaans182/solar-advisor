@@ -66,3 +66,40 @@ def test_dashboard_and_others_remain_get_only(tmp_path):
     # No POST/DELETE routes exist for these paths -> 405 Method Not Allowed.
     assert client.post("/api/dashboard").status_code == 405
     assert client.delete("/api/history").status_code == 405
+
+
+def test_put_updates_existing_purchase(tmp_path):
+    client, store = _client(tmp_path)
+    from datetime import date
+
+    saved = store.add(Purchase(purchased_at=date(2026, 6, 1), rand=1000.0, units_kwh=250.0))
+    resp = client.put(
+        f"/api/purchases/{saved.id}",
+        json={"purchased_at": "2026-06-02", "rand": 900.0, "units_kwh": 300.0},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["id"] == saved.id
+    assert body["rand"] == 900.0
+    assert body["effective_rate"] == 3.0  # 900 / 300
+
+
+def test_put_missing_is_404(tmp_path):
+    client, _ = _client(tmp_path)
+    resp = client.put(
+        "/api/purchases/999",
+        json={"purchased_at": "2026-06-02", "rand": 900.0, "units_kwh": 300.0},
+    )
+    assert resp.status_code == 404
+
+
+def test_put_rejects_invalid_body(tmp_path):
+    client, store = _client(tmp_path)
+    from datetime import date
+
+    saved = store.add(Purchase(purchased_at=date(2026, 6, 1), rand=1000.0, units_kwh=250.0))
+    resp = client.put(
+        f"/api/purchases/{saved.id}",
+        json={"purchased_at": "2026-06-02", "rand": 0, "units_kwh": 300.0},
+    )
+    assert resp.status_code == 422
