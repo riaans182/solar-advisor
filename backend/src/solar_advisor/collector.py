@@ -37,12 +37,21 @@ async def _prune_loop(
     already-large DB reclaims space immediately.
     """
     while True:
-        removed = store.prune_before(clock() - retention)
-        if removed:
+        try:
+            removed = store.prune_before(clock() - retention)
+        except Exception as exc:
+            # Keep the maintenance loop alive across transient store errors
+            # (e.g. a briefly locked DB); retry on the next cycle.
             print(
-                f"collector: pruned {removed} telemetry rows older than {retention}",
+                f"collector: telemetry prune failed ({exc}); retrying next cycle",
                 file=sys.stderr,
             )
+        else:
+            if removed:
+                print(
+                    f"collector: pruned {removed} telemetry rows older than {retention}",
+                    file=sys.stderr,
+                )
         await sleep(interval_s)
 
 
@@ -52,7 +61,7 @@ async def run(
     *,
     max_backoff: float = 30.0,
     retention_days: int = 90,
-    prune_interval: float | None = _PRUNE_INTERVAL_S,
+    prune_interval_s: float | None = _PRUNE_INTERVAL_S,
 ) -> None:
     if source is None:
         source = ReadOnlyMqttClient(
@@ -65,9 +74,9 @@ async def run(
         store = SqliteTelemetryStore(Path(os.environ.get("SA_DB_PATH", "solar_advisor.db")))
 
     prune_task: asyncio.Task[None] | None = None
-    if prune_interval is not None:
+    if prune_interval_s is not None:
         prune_task = asyncio.create_task(
-            _prune_loop(store, timedelta(days=retention_days), prune_interval)
+            _prune_loop(store, timedelta(days=retention_days), prune_interval_s)
         )
 
     try:

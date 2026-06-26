@@ -62,7 +62,7 @@ async def test_run_reconnects_after_mqtt_error(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(collector.asyncio, "sleep", _no_sleep)
 
     with pytest.raises(_StopTest):
-        await collector.run(source, store, max_backoff=30.0, prune_interval=None)
+        await collector.run(source, store, max_backoff=30.0, prune_interval_s=None)
 
     # First stream() raised MqttError; the loop retried and the second stream()
     # produced exactly the one post-reconnect snapshot.
@@ -119,6 +119,42 @@ async def test_prune_loop_prunes_every_cycle() -> None:
     assert store.prune_cutoffs == [expected, expected, expected]
 
 
+async def test_prune_loop_survives_transient_store_error() -> None:
+    class _FlakyStore(_FakeStore):
+        def __init__(self) -> None:
+            super().__init__()
+            self.attempts = 0
+
+        def prune_before(self, cutoff: datetime) -> int:
+            self.attempts += 1
+            if self.attempts == 1:
+                raise RuntimeError("database is locked")
+            return super().prune_before(cutoff)
+
+    store = _FlakyStore()
+    fixed_now = datetime(2026, 6, 26, 12, 0, 0, tzinfo=UTC)
+    sleep_calls = 0
+
+    async def fake_sleep(_seconds: float) -> None:
+        nonlocal sleep_calls
+        sleep_calls += 1
+        if sleep_calls >= 2:
+            raise _StopTest  # stop after the failed cycle + one successful cycle
+
+    with pytest.raises(_StopTest):
+        await collector._prune_loop(
+            store,
+            timedelta(days=1),
+            1.0,
+            clock=lambda: fixed_now,
+            sleep=fake_sleep,
+        )
+
+    # Cycle 1 raised and was swallowed (no cutoff recorded); cycle 2 pruned successfully.
+    assert store.attempts == 2
+    assert store.prune_cutoffs == [fixed_now - timedelta(days=1)]
+
+
 async def test_run_starts_prune_loop_with_retention(monkeypatch: pytest.MonkeyPatch) -> None:
     fake_prune = AsyncMock()
     monkeypatch.setattr(collector, "_prune_loop", fake_prune)
@@ -133,7 +169,7 @@ async def test_run_starts_prune_loop_with_retention(monkeypatch: pytest.MonkeyPa
 
     with pytest.raises(_StopTest):
         await collector.run(
-            source, store, max_backoff=30.0, retention_days=30, prune_interval=123.0
+            source, store, max_backoff=30.0, retention_days=30, prune_interval_s=123.0
         )
 
     fake_prune.assert_called_once()
