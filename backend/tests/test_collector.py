@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import aiomqtt
 import pytest
@@ -33,8 +33,10 @@ class _FakeSource:
 
 
 class _FakeStore:
-    def __init__(self) -> None:
+    def __init__(self, prune_result: int = 0) -> None:
         self.saved: list[Telemetry] = []
+        self.prune_cutoffs: list[datetime] = []
+        self._prune_result = prune_result
 
     def save(self, snapshot: Telemetry) -> bool:
         self.saved.append(snapshot)
@@ -44,7 +46,8 @@ class _FakeStore:
         return []
 
     def prune_before(self, cutoff: datetime) -> int:
-        return 0
+        self.prune_cutoffs.append(cutoff)
+        return self._prune_result
 
 
 async def test_run_reconnects_after_mqtt_error(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -64,3 +67,52 @@ async def test_run_reconnects_after_mqtt_error(monkeypatch: pytest.MonkeyPatch) 
     # produced exactly the one post-reconnect snapshot.
     assert source.calls == 2
     assert store.saved == [source.snapshot]
+
+
+async def test_prune_loop_prunes_at_retention_cutoff() -> None:
+    store = _FakeStore(prune_result=5)
+    fixed_now = datetime(2026, 6, 26, 12, 0, 0, tzinfo=UTC)
+    sleep_calls = 0
+
+    async def fake_sleep(seconds: float) -> None:
+        nonlocal sleep_calls
+        assert seconds == 3600.0
+        sleep_calls += 1
+        raise _StopTest  # break after the first prune+sleep cycle
+
+    with pytest.raises(_StopTest):
+        await collector._prune_loop(
+            store,
+            timedelta(days=90),
+            3600.0,
+            clock=lambda: fixed_now,
+            sleep=fake_sleep,
+        )
+
+    assert store.prune_cutoffs == [fixed_now - timedelta(days=90)]
+    assert sleep_calls == 1
+
+
+async def test_prune_loop_prunes_every_cycle() -> None:
+    store = _FakeStore()
+    fixed_now = datetime(2026, 6, 26, 12, 0, 0, tzinfo=UTC)
+    sleep_calls = 0
+
+    async def fake_sleep(_seconds: float) -> None:
+        nonlocal sleep_calls
+        sleep_calls += 1
+        if sleep_calls >= 3:
+            raise _StopTest
+
+    with pytest.raises(_StopTest):
+        await collector._prune_loop(
+            store,
+            timedelta(days=7),
+            60.0,
+            clock=lambda: fixed_now,
+            sleep=fake_sleep,
+        )
+
+    # Pruned once per cycle: cycles 1, 2, 3 each prune, the 3rd sleep stops the loop.
+    expected = fixed_now - timedelta(days=7)
+    assert store.prune_cutoffs == [expected, expected, expected]

@@ -4,6 +4,8 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import aiomqtt
@@ -12,6 +14,34 @@ from solar_advisor.ingest.mqtt_client import ReadOnlyMqttClient
 from solar_advisor.ingest.source import TelemetrySource
 from solar_advisor.storage.sqlite_store import SqliteTelemetryStore
 from solar_advisor.storage.store import TelemetryStore
+
+# Prune a few times a day: deletes stay small and the 90-day boundary never lags far.
+_PRUNE_INTERVAL_S = 6 * 60 * 60
+
+
+async def _prune_loop(
+    store: TelemetryStore,
+    retention: timedelta,
+    interval_s: float,
+    *,
+    clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+    sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+) -> None:
+    """Periodically delete telemetry older than ``retention``.
+
+    Only the telemetry table is affected: ``prune_before`` issues
+    ``DELETE FROM telemetry``, so the ``purchases`` table sharing the same DB
+    file is never pruned. Prunes first, then sleeps, so a restart with an
+    already-large DB reclaims space immediately.
+    """
+    while True:
+        removed = store.prune_before(clock() - retention)
+        if removed:
+            print(
+                f"collector: pruned {removed} telemetry rows older than {retention}",
+                file=sys.stderr,
+            )
+        await sleep(interval_s)
 
 
 async def run(
