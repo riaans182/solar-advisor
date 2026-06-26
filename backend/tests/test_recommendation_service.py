@@ -172,30 +172,24 @@ def test_dashboard_exposes_battery_and_conversion_power():
     assert data.conversion_power == 75
 
 
-def test_month_projection_energy_only():
-    reader = _FakeReader(
-        [
-            Purchase(purchased_at=date(2026, 6, 3), rand=1000.0, units_kwh=280.0),
-            Purchase(purchased_at=date(2026, 6, 18), rand=500.0, units_kwh=140.0),
-            Purchase(purchased_at=date(2026, 5, 20), rand=900.0, units_kwh=260.0),
-        ]
-    )
-    svc = RecommendationService(
-        config=_config(),
-        estimator=_FakeEstimator(),
-        forecast=_FakeForecast(),
-        purchases=reader,
-    )
-    data = svc.build(_live_state(), objective=0.5)
-    assert data.month_spend == 1500.0  # May purchase excluded
-    expected = (100.0 / 22.0) * 30.0 * 3.56  # energy only, no fixed charge
-    assert round(data.month_projected_cost, 2) == round(expected, 2)
-    assert round(data.month_balance, 2) == round(1500.0 - expected, 2)
-
-
-def test_month_projection_zero_without_reader():
+def test_recommended_schedule_and_costs_present():
     svc = RecommendationService(
         config=_config(), estimator=_FakeEstimator(), forecast=_FakeForecast()
     )
     data = svc.build(_live_state(), objective=0.5)
-    assert data.month_spend == 0.0
+    assert len(data.recommended_assessments) == len(data.slot_assessments)
+    assert isinstance(data.current_daily_cost, float)
+    assert isinstance(data.recommended_daily_cost, float)
+    assert round(data.daily_saving, 2) == round(
+        data.current_daily_cost - data.recommended_daily_cost, 2
+    )
+
+
+def test_forward_month_figure_uses_daily_import_not_mtd():
+    svc = RecommendationService(
+        config=_config(), estimator=_FakeEstimator(), forecast=_FakeForecast()
+    )
+    data = svc.build(_live_state(), objective=0.5)
+    days_remaining = 30 - 22 + 1
+    expected = data.recommendation.expected_daily_grid_import_kwh * days_remaining * data.tariff_rate
+    assert round(data.month_remaining_cost, 2) == round(expected, 2)

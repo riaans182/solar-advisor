@@ -11,6 +11,7 @@ from solar_advisor.domain.telemetry import Telemetry
 from solar_advisor.engine.battery import BatteryModel
 from solar_advisor.engine.inputs import DaylightWindow, LoadProfile
 from solar_advisor.engine.optimize import Recommendation, recommend
+from solar_advisor.engine.recommend_schedule import recommend_schedule
 from solar_advisor.engine.schedule_eval import SlotAssessment, assess_schedule
 from solar_advisor.engine.tariff import FlatRateTariff
 from solar_advisor.estimation.estimator import EstimatedParameters
@@ -44,8 +45,11 @@ class DashboardData:
     expected_pv_kwh_today: float
     expected_pv_kwh_tomorrow: float
     month_spend: float
-    month_projected_cost: float
-    month_balance: float
+    month_remaining_cost: float
+    recommended_assessments: list[SlotAssessment]
+    current_daily_cost: float
+    recommended_daily_cost: float
+    daily_saving: float
     disclaimer: str
 
 
@@ -125,6 +129,25 @@ class RecommendationService:
             month_to_date_import_kwh=telemetry.month_to_date_grid_import_kwh,
             days_in_month=days_in_month,
         )
+        recommended = recommend_schedule(
+            state.schedule,
+            reserve_soc=round(rec.reserve_target_soc),
+            grid_charge_needed=rec.enable_overnight_grid_charge,
+            daylight=daylight,
+        )
+        recommended_assessments = assess_schedule(
+            recommended,
+            battery,
+            tariff,
+            forecast,
+            load,
+            daylight,
+            start_soc=telemetry.battery_soc,
+            month_to_date_import_kwh=telemetry.month_to_date_grid_import_kwh,
+        )
+        current_daily_cost = sum(a.cost for a in assessments)
+        recommended_daily_cost = sum(a.cost for a in recommended_assessments)
+        daily_saving = current_daily_cost - recommended_daily_cost
         conversion_power = (
             telemetry.pv_power
             + telemetry.grid_power
@@ -142,10 +165,8 @@ class RecommendationService:
             if self._purchases is not None
             else 0.0
         )
-        month_projected_cost = (
-            telemetry.month_to_date_grid_import_kwh / today.day * days_in_month * derived.rate
-        )
-        month_balance = month_spend - month_projected_cost
+        days_remaining = days_in_month - today.day + 1
+        month_remaining_cost = rec.expected_daily_grid_import_kwh * days_remaining * derived.rate
         return DashboardData(
             telemetry=telemetry,
             objective=obj,
@@ -162,7 +183,10 @@ class RecommendationService:
             expected_pv_kwh_today=forecast.expected_pv_kwh_today,
             expected_pv_kwh_tomorrow=forecast.expected_pv_kwh_tomorrow,
             month_spend=month_spend,
-            month_projected_cost=month_projected_cost,
-            month_balance=month_balance,
+            month_remaining_cost=month_remaining_cost,
+            recommended_assessments=recommended_assessments,
+            current_daily_cost=current_daily_cost,
+            recommended_daily_cost=recommended_daily_cost,
+            daily_saving=daily_saving,
             disclaimer=ADVISORY_DISCLAIMER,
         )
