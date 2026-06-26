@@ -77,3 +77,13 @@ def test_tariff_window_days_from_env(monkeypatch):
     from solar_advisor.config import load_config
 
     assert load_config().tariff_window_days == 120
+
+
+def test_telemetry_retention_days_defaults_to_90(monkeypatch):
+    monkeypatch.delenv("SA_TELEMETRY_RETENTION_DAYS", raising=False)
+    assert load_config().telemetry_retention_days == 90
+
+
+def test_telemetry_retention_days_from_env(monkeypatch):
+    monkeypatch.setenv("SA_TELEMETRY_RETENTION_DAYS", "30")
+    assert load_config().telemetry_retention_days == 30
