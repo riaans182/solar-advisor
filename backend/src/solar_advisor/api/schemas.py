@@ -41,6 +41,7 @@ class HistoryPoint(BaseModel):
     pv_power: float
     grid_power: float
     load_power: float
+    battery_power: float
 
 
 class HistoryView(BaseModel):

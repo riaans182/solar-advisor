@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import math
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 
@@ -210,11 +211,14 @@ def build_app(state: LiveState, config: AppConfig | None = None) -> FastAPI:
 
     @app.get("/api/history", response_model=HistoryView)
     def history(
-        hours: int = Query(default=24, ge=1, le=168),
+        hours: int = Query(default=24, ge=1, le=720),
         store: TelemetryStore = Depends(get_store),  # noqa: B008
     ) -> HistoryView:
         end = datetime.now(UTC)
-        rows = store.query_range(end - timedelta(hours=hours), end)
+        start = end - timedelta(hours=hours)
+        # Target ~400 points regardless of range; never bucket finer than the 10s sample.
+        bucket_seconds = max(10, math.ceil(hours * 3600 / 400))
+        rows = store.query_bucketed(start, end, bucket_seconds)
         return HistoryView(
             points=[
                 HistoryPoint(
@@ -223,6 +227,7 @@ def build_app(state: LiveState, config: AppConfig | None = None) -> FastAPI:
                     pv_power=r.pv_power,
                     grid_power=r.grid_power,
                     load_power=r.load_power,
+                    battery_power=r.battery_power,
                 )
                 for r in rows
             ]

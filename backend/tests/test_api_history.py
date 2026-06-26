@@ -36,4 +36,28 @@ def test_history_returns_points(tmp_path):
 def test_history_hours_bounds(tmp_path):
     client, _ = _client_with_store(tmp_path)
     assert client.get("/api/history?hours=0").status_code == 422  # ge=1
-    assert client.get("/api/history?hours=999").status_code == 422  # le=168
+    assert client.get("/api/history?hours=999").status_code == 422  # le=720
+
+
+def test_history_accepts_30_day_range_and_returns_battery_power(tmp_path):
+    from datetime import UTC, datetime, timedelta
+
+    from fastapi.testclient import TestClient
+
+    from solar_advisor.api.app import build_app, get_store
+    from solar_advisor.ingest.live import LiveState
+    from solar_advisor.storage.sqlite_store import SqliteTelemetryStore
+    from tests.conftest import make_telemetry
+
+    store = SqliteTelemetryStore(tmp_path / "h.db", min_interval=timedelta(0))
+    now = datetime.now(UTC)
+    store.save(make_telemetry(now - timedelta(days=10), pv_power=120, battery_power=40))
+    app = build_app(state=LiveState(store=None))
+    app.dependency_overrides[get_store] = lambda: store
+    client = TestClient(app)
+
+    assert client.get("/api/history?hours=720").status_code == 200
+    assert client.get("/api/history?hours=721").status_code == 422  # over cap
+    pts = client.get("/api/history?hours=720").json()["points"]
+    assert len(pts) >= 1
+    assert "battery_power" in pts[0]
