@@ -163,6 +163,26 @@ it('re-fetches with the new objective after the slider debounce', async () => {
   expect(after[after.length - 1]).toContain('objective=0.8')
 })
 
+it('refetches history with the selected range', async () => {
+  // The client mock inspects URLs (no per-fn mock): getHistory hits
+  // /api/history?hours=<h>. Clicking the 30d button must refetch with 720.
+  const fetchMock = vi.fn().mockImplementation((url: string) =>
+    Promise.resolve(okResponse(url.includes('/api/history') ? { points: [] } : DASH)),
+  )
+  vi.stubGlobal('fetch', fetchMock)
+
+  const w = mount(Dashboard)
+  await flushPromises()
+
+  await w.find('[data-test="range-720"]').trigger('click')
+  await flushPromises()
+
+  const historyUrls = fetchMock.mock.calls
+    .map((c) => String(c[0]))
+    .filter((u) => u.includes('/api/history'))
+  expect(historyUrls.some((u) => u.includes('hours=720'))).toBe(true)
+})
+
 it('shows the waiting state on a 503 first load', async () => {
   vi.stubGlobal(
     'fetch',

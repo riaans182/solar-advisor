@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import type { HistoryPoint } from '../api/types'
 
-type Metric = 'battery_soc' | 'pv_power' | 'grid_power' | 'load_power'
+type Metric = 'battery_soc' | 'pv_power' | 'grid_power' | 'load_power' | 'battery_power'
 
 const props = defineProps<{
   points: HistoryPoint[]
@@ -211,6 +211,9 @@ const hoverLabel = computed(() => {
 }
 .chart--load_power {
   --line: var(--sa-accent, #6aa6ff);
+}
+.chart--battery_power {
+  --line: var(--sa-good, #34d399);
 }
 
 .chart__head {

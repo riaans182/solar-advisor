@@ -13,7 +13,8 @@ import TariffBadge from '../components/TariffBadge.vue'
 
 const POLL_MS = 10_000
 const DEBOUNCE_MS = 300
-const HISTORY_HOURS = 24
+const HISTORY_POLL_MS = 60_000
+const historyHours = ref(24)
 
 // The objective the user steers with the slider; the parent owns it so a change
 // can debounce-then-refetch ("re-run the engine") while the components stay
@@ -59,7 +60,7 @@ async function fetchDashboard(): Promise<void> {
 
 async function fetchHistory(): Promise<void> {
   try {
-    const view = await getHistory(HISTORY_HOURS)
+    const view = await getHistory(historyHours.value)
     history.value = view.points
   } catch {
     // History is non-critical; leave the last good series in place.
@@ -68,7 +69,6 @@ async function fetchHistory(): Promise<void> {
 
 function refreshAll(): void {
   void fetchDashboard()
-  void fetchHistory()
 }
 
 // Slider change re-runs the engine: debounce so dragging doesn't spam the API.
@@ -79,14 +79,24 @@ watch(objective, () => {
   }, DEBOUNCE_MS)
 })
 
+// Range change refetches history immediately (decoupled from the 10s poll).
+watch(historyHours, () => {
+  void fetchHistory()
+})
+
+let historyTimer: ReturnType<typeof setInterval> | undefined
+
 onMounted(() => {
   refreshAll()
+  void fetchHistory()
   pollTimer = setInterval(refreshAll, POLL_MS)
+  historyTimer = setInterval(() => void fetchHistory(), HISTORY_POLL_MS)
 })
 
 onBeforeUnmount(() => {
   if (pollTimer) clearInterval(pollTimer)
   if (debounceTimer) clearTimeout(debounceTimer)
+  if (historyTimer) clearInterval(historyTimer)
 })
 </script>
 
@@ -165,17 +175,31 @@ onBeforeUnmount(() => {
             <ObjectiveSlider v-model="objective" />
 
             <section class="dash__history" aria-label="Recent history">
-              <h2 class="dash__history-title">Last 24 hours</h2>
+              <div class="dash__history-head">
+                <h2 class="dash__history-title">History</h2>
+                <div class="dash__range" role="group" aria-label="History range">
+                  <button
+                    v-for="r in [
+                      { h: 24, label: '24h' },
+                      { h: 168, label: '7d' },
+                      { h: 720, label: '30d' },
+                    ]"
+                    :key="r.h"
+                    class="dash__range-btn"
+                    :data-test="`range-${r.h}`"
+                    :data-active="historyHours === r.h"
+                    @click="historyHours = r.h"
+                  >
+                    {{ r.label }}
+                  </button>
+                </div>
+              </div>
               <div class="dash__charts">
-                <TrendChart
-                  :points="history"
-                  metric="battery_soc"
-                  label="Battery SOC"
-                  unit="%"
-                />
+                <TrendChart :points="history" metric="battery_soc" label="Battery SOC" unit="%" />
                 <TrendChart :points="history" metric="pv_power" label="Solar" unit="W" />
                 <TrendChart :points="history" metric="grid_power" label="Grid" unit="W" />
                 <TrendChart :points="history" metric="load_power" label="Load" unit="W" />
+                <TrendChart :points="history" metric="battery_power" label="Battery flow" unit="W" />
               </div>
             </section>
           </aside>
@@ -368,13 +392,42 @@ onBeforeUnmount(() => {
   border: 1px solid var(--sa-line, #273140);
 }
 
+.dash__history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+
 .dash__history-title {
-  margin: 0 0 0.9rem;
+  margin: 0;
   font-size: 0.78rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--sa-text-dim, #9aa6b6);
+}
+
+.dash__range {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.dash__range-btn {
+  padding: 0.25rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--sa-line, #273140);
+  background: transparent;
+  color: var(--sa-text-dim, #9aa6b6);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dash__range-btn[data-active='true'] {
+  color: var(--sa-text, #eef2f7);
+  border-color: var(--sa-accent, #5aa9ff);
 }
 
 .dash__charts {
