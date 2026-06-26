@@ -28,6 +28,8 @@ export interface DashboardView {
   pv_power: number
   grid_power: number
   load_power: number
+  battery_power: number
+  conversion_power: number
   month_to_date_grid_import_kwh: number
   usable_kwh: number
   usable_kwh_confidence: number
@@ -57,6 +59,7 @@ export interface HistoryPoint {
   pv_power: number
   grid_power: number
   load_power: number
+  battery_power: number
 }
 
 export interface HistoryView {
