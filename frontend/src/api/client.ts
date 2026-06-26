@@ -70,6 +70,16 @@ export async function createPurchase(body: PurchaseCreate): Promise<PurchaseView
   return (await resp.json()) as PurchaseView
 }
 
+export async function updatePurchase(id: number, body: PurchaseCreate): Promise<PurchaseView> {
+  const resp = await fetch(`${BASE}/api/purchases/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!resp.ok) throw await failure(resp)
+  return (await resp.json()) as PurchaseView
+}
+
 export async function deletePurchase(id: number): Promise<void> {
   const resp = await fetch(`${BASE}/api/purchases/${id}`, { method: 'DELETE' })
   if (!resp.ok) throw await failure(resp)

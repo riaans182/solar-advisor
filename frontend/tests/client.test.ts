@@ -7,6 +7,7 @@ import {
   getPurchases,
   createPurchase,
   deletePurchase,
+  updatePurchase,
   ApiError,
 } from '../src/api/client'
 
@@ -72,6 +73,21 @@ describe('api client', () => {
     const [url, init] = fetchMock.mock.calls[0]
     expect(url).toContain('/api/purchases/7')
     expect(init).toMatchObject({ method: 'DELETE' })
+  })
+
+  it('updatePurchase PUTs the body to the id and returns the row', async () => {
+    const fetchMock = mockFetch(200, { id: 5, rand: 900 })
+    vi.stubGlobal('fetch', fetchMock)
+    const updated = await updatePurchase(5, {
+      purchased_at: '2026-06-02',
+      rand: 900,
+      units_kwh: 300,
+    })
+    expect(updated.id).toBe(5)
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toContain('/api/purchases/5')
+    expect(init).toMatchObject({ method: 'PUT' })
+    expect(JSON.parse((init as RequestInit).body as string)).toMatchObject({ rand: 900 })
   })
 
   it('surfaces a FastAPI 422 array-detail message', async () => {
