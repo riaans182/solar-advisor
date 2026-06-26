@@ -26,6 +26,8 @@ from solar_advisor.domain.purchase import Purchase
 from solar_advisor.estimation.estimator import ParameterEstimator
 from solar_advisor.explain.client import Explainer, anthropic_complete
 from solar_advisor.explain.context import build_context
+from solar_advisor.forecast.forecast_solar_provider import ForecastSolarProvider
+from solar_advisor.forecast.provider import ForecastProvider
 from solar_advisor.forecast.static_provider import StaticForecastProvider
 from solar_advisor.ingest.live import LiveState, run_live_ingest
 from solar_advisor.services.recommendation import DashboardData, RecommendationService
@@ -291,9 +293,19 @@ def create_production_app() -> FastAPI:
     store = SqliteTelemetryStore(config.db_path)
     state = LiveState(store=store)
     estimator = ParameterEstimator(store, nominal_kwh=config.battery_nominal_kwh)
-    forecast = StaticForecastProvider(
-        today_kwh=config.forecast_today_kwh, tomorrow_kwh=config.forecast_tomorrow_kwh
-    )
+    if config.forecast_source == "forecast_solar":
+        forecast: ForecastProvider = ForecastSolarProvider(
+            lat=config.lat,
+            lon=config.lon,
+            arrays=config.pv_arrays,
+            ttl_s=config.forecast_ttl_s,
+            fallback_today=config.forecast_today_kwh,
+            fallback_tomorrow=config.forecast_tomorrow_kwh,
+        )
+    else:
+        forecast = StaticForecastProvider(
+            today_kwh=config.forecast_today_kwh, tomorrow_kwh=config.forecast_tomorrow_kwh
+        )
     purchase_store = SqlitePurchaseStore(config.db_path)
     tariff_provider = TariffProvider(
         reader=purchase_store,
