@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { HistoryPoint } from '../api/types'
 
 type Metric = 'battery_soc' | 'pv_power' | 'grid_power' | 'load_power'
@@ -68,6 +68,30 @@ function fmtLatest(v: number): string {
   const rounded = Math.abs(v) >= 100 ? Math.round(v) : Math.round(v * 10) / 10
   return `${rounded}${props.unit ? ` ${props.unit}` : ''}`
 }
+
+const hover = ref<number | null>(null)
+
+function onMove(e: PointerEvent): void {
+  const n = props.points.length
+  if (!n) return
+  const rect = (e.currentTarget as SVGGraphicsElement).getBoundingClientRect()
+  const rel = rect.width > 0 ? (e.clientX - rect.left) / rect.width : 0
+  hover.value = Math.max(0, Math.min(n - 1, Math.round(rel * (n - 1))))
+}
+
+function onLeave(): void {
+  hover.value = null
+}
+
+const hoverPoint = computed(() => (hover.value === null ? null : project(hover.value)))
+
+const hoverLabel = computed(() => {
+  if (hover.value === null) return ''
+  const p = props.points[hover.value]
+  const d = new Date(p.ts)
+  const t = d.toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  return `${fmtLatest(values.value[hover.value])} · ${t}`
+})
 </script>
 
 <template>
@@ -92,6 +116,8 @@ function fmtLatest(v: number): string {
       preserveAspectRatio="none"
       role="img"
       :aria-label="`${label} trend over time`"
+      @pointermove="onMove"
+      @pointerleave="onLeave"
     >
       <defs>
         <linearGradient :id="gradientId" x1="0" y1="0" x2="0" y2="1">
@@ -116,18 +142,55 @@ function fmtLatest(v: number): string {
         r="3"
         :fill="`var(--line, #5aa9ff)`"
       />
+      <line
+        v-if="hoverPoint"
+        :x1="hoverPoint.x"
+        :x2="hoverPoint.x"
+        :y1="PAD"
+        :y2="H - PAD"
+        stroke="var(--sa-text-dim, #9aa6b6)"
+        stroke-width="1"
+        stroke-dasharray="3 3"
+        vector-effect="non-scaling-stroke"
+      />
+      <circle v-if="hoverPoint" :cx="hoverPoint.x" :cy="hoverPoint.y" r="3.5" :fill="`var(--line, #5aa9ff)`" />
     </svg>
+
+    <div
+      v-if="hoverPoint"
+      data-test="chart-tip"
+      class="chart__tip"
+      :style="{ left: `${(hoverPoint.x / W) * 100}%` }"
+    >
+      {{ hoverLabel }}
+    </div>
   </figure>
 </template>
 
 <style scoped>
 .chart {
+  position: relative;
   margin: 0;
   padding: 1rem 1.1rem 1.05rem;
   border-radius: 14px;
   background: var(--sa-surface, #161c24);
   border: 1px solid var(--sa-line, #273140);
   --line: var(--sa-accent, #5aa9ff);
+}
+
+.chart__tip {
+  position: absolute;
+  top: 1.6rem;
+  transform: translateX(-50%);
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  background: var(--sa-bg, #0f141b);
+  border: 1px solid var(--sa-line, #273140);
+  color: var(--sa-text, #eef2f7);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .chart--battery_soc {
