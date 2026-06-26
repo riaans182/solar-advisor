@@ -4,9 +4,23 @@ import type { PurchaseView } from '../api/types'
 import { formatDate, formatRand, formatRatePerKwh, formatUnits } from '../lib/format'
 
 defineProps<{ purchases: PurchaseView[] }>()
-const emit = defineEmits<{ delete: [id: number] }>()
+const emit = defineEmits<{
+  delete: [id: number]
+  update: [
+    payload: {
+      id: number
+      body: { purchased_at: string; rand: number; units_kwh: number; note: string | null }
+    },
+  ]
+}>()
 
 const confirmingId = ref<number | null>(null)
+const editingId = ref<number | null>(null)
+const editDate = ref('')
+const editRand = ref('')
+const editUnits = ref('')
+const editNote = ref('')
+const editError = ref('')
 
 function arm(id: number): void {
   confirmingId.value = id
@@ -17,6 +31,40 @@ function cancel(): void {
 function confirm(id: number): void {
   emit('delete', id)
   confirmingId.value = null
+}
+
+function startEdit(p: PurchaseView): void {
+  editingId.value = p.id
+  editDate.value = p.purchased_at
+  editRand.value = String(p.rand)
+  editUnits.value = String(p.units_kwh)
+  editNote.value = p.note ?? ''
+  editError.value = ''
+}
+function cancelEdit(): void {
+  editingId.value = null
+  editError.value = ''
+}
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+function saveEdit(id: number): void {
+  const rand = Number(editRand.value)
+  const units = Number(editUnits.value)
+  if (!editDate.value || editDate.value > todayIso()) {
+    editError.value = 'Date cannot be in the future.'
+    return
+  }
+  if (!(rand > 0) || !(units > 0)) {
+    editError.value = 'Rand and units must be greater than 0.'
+    return
+  }
+  emit('update', {
+    id,
+    body: { purchased_at: editDate.value, rand, units_kwh: units, note: editNote.value.trim() || null },
+  })
+  editingId.value = null
+  editError.value = ''
 }
 </script>
 
@@ -37,29 +85,44 @@ function confirm(id: number): void {
       </thead>
       <tbody>
         <tr v-for="p in purchases" :key="p.id">
-          <td>{{ formatDate(p.purchased_at) }}</td>
-          <td class="pt__num">{{ formatRand(p.rand) }}</td>
-          <td class="pt__num">{{ formatUnits(p.units_kwh) }}</td>
-          <td class="pt__num pt__rate">{{ formatRatePerKwh(p.effective_rate) }}</td>
-          <td class="pt__note">{{ p.note ?? '' }}</td>
-          <td class="pt__actions">
-            <template v-if="confirmingId === p.id">
-              <button
-                class="pt__btn pt__btn--danger"
-                :data-test="`confirm-${p.id}`"
-                @click="confirm(p.id)"
-              >
-                Confirm
-              </button>
-              <button class="pt__btn" @click="cancel">Cancel</button>
-            </template>
-            <button v-else class="pt__btn" :data-test="`del-${p.id}`" @click="arm(p.id)">
-              Delete
-            </button>
-          </td>
+          <template v-if="editingId === p.id">
+            <td><input v-model="editDate" type="date" :max="todayIso()" :data-test="`edit-date-${p.id}`" /></td>
+            <td><input v-model="editRand" type="number" min="0" step="0.01" :data-test="`edit-rand-${p.id}`" /></td>
+            <td><input v-model="editUnits" type="number" min="0" step="0.01" :data-test="`edit-units-${p.id}`" /></td>
+            <td class="pt__num pt__rate">—</td>
+            <td><input v-model="editNote" type="text" :data-test="`edit-note-${p.id}`" /></td>
+            <td class="pt__actions">
+              <button class="pt__btn" :data-test="`save-${p.id}`" @click="saveEdit(p.id)">Save</button>
+              <button class="pt__btn" :data-test="`cancel-edit-${p.id}`" @click="cancelEdit">Cancel</button>
+            </td>
+          </template>
+          <template v-else>
+            <td>{{ formatDate(p.purchased_at) }}</td>
+            <td class="pt__num">{{ formatRand(p.rand) }}</td>
+            <td class="pt__num">{{ formatUnits(p.units_kwh) }}</td>
+            <td class="pt__num pt__rate">{{ formatRatePerKwh(p.effective_rate) }}</td>
+            <td class="pt__note">{{ p.note ?? '' }}</td>
+            <td class="pt__actions">
+              <template v-if="confirmingId === p.id">
+                <button
+                  class="pt__btn pt__btn--danger"
+                  :data-test="`confirm-${p.id}`"
+                  @click="confirm(p.id)"
+                >
+                  Confirm
+                </button>
+                <button class="pt__btn" @click="cancel">Cancel</button>
+              </template>
+              <template v-else>
+                <button class="pt__btn" :data-test="`edit-${p.id}`" @click="startEdit(p)">Edit</button>
+                <button class="pt__btn" :data-test="`del-${p.id}`" @click="arm(p.id)">Delete</button>
+              </template>
+            </td>
+          </template>
         </tr>
       </tbody>
     </table>
+    <p v-if="editError" class="pt__error" role="alert">{{ editError }}</p>
   </section>
 </template>
 
@@ -132,6 +195,21 @@ function confirm(id: number): void {
 }
 .pt__btn--danger {
   border-color: var(--sa-bad-line, #ef6b6b3a);
+  color: var(--sa-bad, #ef6b6b);
+}
+.pt__table input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.3rem 0.4rem;
+  border-radius: 6px;
+  border: 1px solid var(--sa-line, #273140);
+  background: var(--sa-bg, #0f141b);
+  color: var(--sa-text, #eef2f7);
+  font-size: 0.85rem;
+}
+.pt__error {
+  margin: 0.6rem 0 0;
+  font-size: 0.84rem;
   color: var(--sa-bad, #ef6b6b);
 }
 </style>

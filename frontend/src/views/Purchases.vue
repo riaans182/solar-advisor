@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { deletePurchase, getDashboard, getPurchases } from '../api/client'
+import { deletePurchase, getDashboard, getPurchases, updatePurchase } from '../api/client'
 import type { PurchaseView } from '../api/types'
 import PurchaseForm from '../components/PurchaseForm.vue'
 import PurchaseTable from '../components/PurchaseTable.vue'
@@ -51,6 +51,18 @@ async function onDelete(id: number): Promise<void> {
   }
 }
 
+async function onUpdate(payload: {
+  id: number
+  body: { purchased_at: string; rand: number; units_kwh: number; note: string | null }
+}): Promise<void> {
+  try {
+    await updatePurchase(payload.id, payload.body)
+    await refresh()
+  } catch (e) {
+    errorMsg.value = e instanceof Error ? e.message : 'Could not update the purchase.'
+  }
+}
+
 onMounted(refresh)
 </script>
 
@@ -66,7 +78,7 @@ onMounted(refresh)
       </div>
       <PurchaseForm v-if="showForm" @created="onCreated" />
       <PurchaseCharts :purchases="purchases" :current-rate="rate" />
-      <PurchaseTable :purchases="purchases" @delete="onDelete" />
+      <PurchaseTable :purchases="purchases" @delete="onDelete" @update="onUpdate" />
     </div>
   </div>
 </template>

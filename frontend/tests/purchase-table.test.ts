@@ -44,4 +44,23 @@ describe('PurchaseTable', () => {
     await w.get('[data-test="confirm-2"]').trigger('click')
     expect(w.emitted('delete')?.[0]).toEqual([2])
   })
+
+  it('enters edit mode and emits update with the edited body', async () => {
+    const w = mount(PurchaseTable, { props: { purchases } })
+    await w.get('[data-test="edit-1"]').trigger('click')
+    await w.get('[data-test="edit-rand-1"]').setValue('1200')
+    await w.get('[data-test="edit-units-1"]').setValue('300')
+    await w.get('[data-test="save-1"]').trigger('click')
+    const ev = w.emitted('update')?.[0]?.[0] as { id: number; body: Record<string, unknown> }
+    expect(ev.id).toBe(1)
+    expect(ev.body).toMatchObject({ rand: 1200, units_kwh: 300 })
+  })
+
+  it('cancel exits edit mode without emitting', async () => {
+    const w = mount(PurchaseTable, { props: { purchases } })
+    await w.get('[data-test="edit-1"]').trigger('click')
+    await w.get('[data-test="cancel-edit-1"]').trigger('click')
+    expect(w.emitted('update')).toBeFalsy()
+    expect(w.find('[data-test="edit-rand-1"]').exists()).toBe(false)
+  })
 })
