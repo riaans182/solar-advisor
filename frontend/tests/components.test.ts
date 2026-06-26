@@ -4,7 +4,8 @@ import { mount } from '@vue/test-utils'
 import ScheduleTable from '../src/components/ScheduleTable.vue'
 import ObjectiveSlider from '../src/components/ObjectiveSlider.vue'
 import RecommendationPanel from '../src/components/RecommendationPanel.vue'
-import type { RecommendationView, SlotView } from '../src/api/types'
+import LiveTiles from '../src/components/LiveTiles.vue'
+import type { DashboardView, RecommendationView, SlotView } from '../src/api/types'
 
 const slots: SlotView[] = [
   {
@@ -80,5 +81,57 @@ describe('ObjectiveSlider', () => {
     const input = w.get('input[type="range"]')
     await input.setValue('0.8')
     expect(w.emitted('update:modelValue')?.[0]).toEqual([0.8])
+  })
+})
+
+function dash(over: Partial<DashboardView> = {}): DashboardView {
+  return {
+    objective: 0.5,
+    battery_soc: 75,
+    pv_power: 0,
+    grid_power: 656,
+    load_power: 600,
+    battery_power: 420,
+    conversion_power: 30,
+    month_to_date_grid_import_kwh: 100,
+    usable_kwh: 15,
+    usable_kwh_confidence: 0.6,
+    daily_consumption_kwh: 24,
+    daily_consumption_confidence: 0.5,
+    tariff_rate: 3.56,
+    tariff_source: 'config',
+    tariff_source_date: null,
+    expected_pv_kwh_today: 20,
+    expected_pv_kwh_tomorrow: 20,
+    slots: [],
+    recommendation: {
+      reserve_target_soc: 40,
+      enable_overnight_grid_charge: false,
+      grid_charge_kwh: 0,
+      expected_daily_grid_import_kwh: 3,
+      expected_daily_cost: 12,
+      backup_hours: 8,
+      monthly_cost_so_far: 100,
+    },
+    disclaimer: 'x',
+    ...over,
+  }
+}
+
+describe('LiveTiles battery flow + conversion', () => {
+  it('shows charging when battery_power > 0', () => {
+    const w = mount(LiveTiles, { props: { dashboard: dash({ battery_power: 420 }) } })
+    expect(w.text().toLowerCase()).toContain('charging')
+  })
+
+  it('shows discharging when battery_power < 0', () => {
+    const w = mount(LiveTiles, { props: { dashboard: dash({ battery_power: -300 }) } })
+    expect(w.text().toLowerCase()).toContain('discharging')
+  })
+
+  it('renders a conversion tile clamped at 0 for negative residual', () => {
+    const w = mount(LiveTiles, { props: { dashboard: dash({ conversion_power: -12 }) } })
+    expect(w.text().toLowerCase()).toContain('conversion')
+    expect(w.text()).toContain('0 W')
   })
 })

@@ -19,6 +19,15 @@ const socTone = computed(() => {
   if (soc >= 20) return 'warn' as const
   return 'bad' as const
 })
+
+const batteryFlow = computed(() => {
+  const p = props.dashboard.battery_power
+  if (p > 1) return `charging ${Math.round(p)} W`
+  if (p < -1) return `discharging ${Math.round(-p)} W`
+  return 'idle'
+})
+
+const conversion = computed(() => Math.max(0, Math.round(props.dashboard.conversion_power)))
 </script>
 
 <template>
@@ -35,7 +44,7 @@ const socTone = computed(() => {
         <span class="tile__label">Battery</span>
       </header>
       <p class="tile__value">{{ formatPercent(dashboard.battery_soc) }}</p>
-      <p class="tile__sub">state of charge</p>
+      <p class="tile__sub">{{ batteryFlow }}</p>
       <div class="tile__bar" aria-hidden="true">
         <span :style="{ width: Math.min(100, Math.max(0, dashboard.battery_soc)) + '%' }" />
       </div>
@@ -80,6 +89,19 @@ const socTone = computed(() => {
       </header>
       <p class="tile__value">{{ formatPower(dashboard.load_power) }}</p>
       <p class="tile__sub">household demand</p>
+    </article>
+
+    <article class="tile" data-tone="neutral">
+      <header class="tile__head">
+        <span class="tile__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5" stroke-linejoin="round" />
+          </svg>
+        </span>
+        <span class="tile__label">Conversion / idle</span>
+      </header>
+      <p class="tile__value">{{ formatPower(conversion) }}</p>
+      <p class="tile__sub">inverter overhead + losses</p>
     </article>
   </section>
 </template>
