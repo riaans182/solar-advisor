@@ -4,8 +4,9 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import math
-from collections.abc import AsyncIterator
-from datetime import UTC, datetime, timedelta
+from collections.abc import AsyncIterator, Callable
+from datetime import UTC, date, datetime, timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -290,6 +291,17 @@ def build_app(state: LiveState, config: AppConfig | None = None) -> FastAPI:
     return app
 
 
+def _local_today_fn(tz_name: str) -> Callable[[], date]:
+    """A ``today`` provider in the configured timezone (default SAST), so the PV
+    forecast reads the local civil day rather than UTC. Falls back to UTC if the
+    zone name is invalid, so a typo can't crash startup."""
+    try:
+        tz = ZoneInfo(tz_name)
+    except (ZoneInfoNotFoundError, ValueError):
+        tz = ZoneInfo("UTC")
+    return lambda: datetime.now(tz).date()
+
+
 def create_production_app() -> FastAPI:
     """Entry point for uvicorn: wires real config, store, estimator, forecast."""
     config = load_config()
@@ -304,6 +316,7 @@ def create_production_app() -> FastAPI:
             ttl_s=config.forecast_ttl_s,
             fallback_today=config.forecast_today_kwh,
             fallback_tomorrow=config.forecast_tomorrow_kwh,
+            today=_local_today_fn(config.timezone),
         )
     else:
         forecast = StaticForecastProvider(

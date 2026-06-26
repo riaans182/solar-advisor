@@ -30,6 +30,7 @@ services:
       SA_LON: ${SA_LON:-18.42}
       SA_PV_ARRAYS: ${SA_PV_ARRAYS:-}
       SA_FORECAST_TTL_S: ${SA_FORECAST_TTL_S:-10800}
+      SA_TIMEZONE: ${SA_TIMEZONE:-Africa/Johannesburg}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?set in .env}
       SA_EXPLAIN_MODEL: ${SA_EXPLAIN_MODEL:-claude-haiku-4-5}
       SA_EXPLAIN_ENABLED: ${SA_EXPLAIN_ENABLED:-true}

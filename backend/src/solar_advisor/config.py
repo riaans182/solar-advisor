@@ -47,6 +47,7 @@ class AppConfig:
     lon: float = 18.42
     forecast_ttl_s: float = 10800.0  # 3h cache for the Forecast.Solar call
     pv_arrays: tuple[PvArray, ...] = ()
+    timezone: str = "Africa/Johannesburg"  # local day used for the PV forecast's today/tomorrow
     telemetry_retention_days: int = 90  # collector prunes telemetry rows older than this
     # Explain layer (Plan D)
     explain_model: str = "claude-haiku-4-5"
@@ -108,6 +109,7 @@ def load_config() -> AppConfig:
         lon=float(os.environ.get("SA_LON", "18.42")),
         forecast_ttl_s=float(os.environ.get("SA_FORECAST_TTL_S", "10800")),
         pv_arrays=_parse_pv_arrays(os.environ.get("SA_PV_ARRAYS")),
+        timezone=os.environ.get("SA_TIMEZONE", "Africa/Johannesburg"),
         telemetry_retention_days=retention_days,
         explain_model=os.environ.get("SA_EXPLAIN_MODEL", "claude-haiku-4-5"),
         explain_enabled=os.environ.get("SA_EXPLAIN_ENABLED", "true").strip().lower() != "false",
