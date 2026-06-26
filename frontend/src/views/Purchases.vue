@@ -12,6 +12,7 @@ const rate = ref(0)
 const source = ref('config')
 const sourceDate = ref<string | null>(null)
 const errorMsg = ref('')
+const showForm = ref(false)
 
 async function loadPurchases(): Promise<void> {
   try {
@@ -36,6 +37,11 @@ async function refresh(): Promise<void> {
   await Promise.all([loadPurchases(), loadTariff()])
 }
 
+async function onCreated(): Promise<void> {
+  showForm.value = false
+  await refresh()
+}
+
 async function onDelete(id: number): Promise<void> {
   try {
     await deletePurchase(id)
@@ -53,7 +59,12 @@ onMounted(refresh)
     <div class="pv__inner">
       <TariffBadge :rate="rate" :source="source" :source-date="sourceDate" />
       <p v-if="errorMsg" class="pv__error" role="alert">{{ errorMsg }}</p>
-      <PurchaseForm @created="refresh" />
+      <div class="pv__formbar">
+        <button class="pv__toggle" data-test="toggle-form" @click="showForm = !showForm">
+          {{ showForm ? '× Close' : '+ Log a purchase' }}
+        </button>
+      </div>
+      <PurchaseForm v-if="showForm" @created="onCreated" />
       <PurchaseCharts :purchases="purchases" :current-rate="rate" />
       <PurchaseTable :purchases="purchases" @delete="onDelete" />
     </div>
@@ -71,6 +82,19 @@ onMounted(refresh)
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
+}
+.pv__formbar {
+  display: flex;
+}
+.pv__toggle {
+  padding: 0.5rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid var(--sa-accent, #5aa9ff);
+  background: transparent;
+  color: var(--sa-accent, #5aa9ff);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
 }
 .pv__error {
   margin: 0;

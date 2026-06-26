@@ -47,4 +47,14 @@ describe('Purchases view', () => {
     expect(deletePurchase).toHaveBeenCalledWith(1)
     expect(getPurchases).toHaveBeenCalled() // list refreshed
   })
+
+  it('keeps the log form collapsed until the button is clicked', async () => {
+    getPurchases.mockResolvedValue({ purchases: [] })
+    getDashboard.mockResolvedValue({ tariff_rate: 3.56, tariff_source: 'config', tariff_source_date: null })
+    const w = mount(Purchases)
+    await flushPromises()
+    expect(w.find('form.pf').exists()).toBe(false)
+    await w.get('[data-test="toggle-form"]').trigger('click')
+    expect(w.find('form.pf').exists()).toBe(true)
+  })
 })
