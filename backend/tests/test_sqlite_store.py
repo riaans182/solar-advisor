@@ -82,3 +82,22 @@ def test_data_persists_across_reopen(tmp_path):
     assert len(rows) == 1
     assert rows[0].ts == t
     assert rows[0].battery_soc == 42
+
+
+def test_query_bucketed_averages_within_buckets(tmp_path):
+    store = SqliteTelemetryStore(tmp_path / "t.db", min_interval=timedelta(0))
+    base = datetime(2026, 6, 1, 0, 0, 0)
+    # Two samples in bucket 0 (avg pv 100), one in a later bucket (pv 300).
+    store.save(make_telemetry(base, pv_power=50))
+    store.save(make_telemetry(base + timedelta(seconds=30), pv_power=150))
+    store.save(make_telemetry(base + timedelta(seconds=3600), pv_power=300))
+    out = store.query_bucketed(base - timedelta(minutes=1), base + timedelta(hours=2), 3600)
+    assert len(out) == 2
+    assert round(out[0].pv_power) == 100  # (50 + 150) / 2
+    assert round(out[1].pv_power) == 300
+    assert out[0].ts <= out[1].ts  # ordered
+
+
+def test_query_bucketed_empty_range_returns_empty(store):
+    out = store.query_bucketed(datetime(2026, 1, 1), datetime(2026, 1, 2), 3600)
+    assert out == []

@@ -65,6 +65,46 @@ class SqliteTelemetryStore:
             out.append(Telemetry(ts=ts, **kwargs))
         return out
 
+    def query_bucketed(
+        self, start: datetime, end: datetime, bucket_seconds: int
+    ) -> list[Telemetry]:
+        # Aggregate in SQL so a 30-day range never loads ~260k rows into Python.
+        # Bucket key = unix-epoch(ts) // bucket_seconds. ts is stored as an ISO8601
+        # string; replacing 'T' with a space keeps strftime('%s', ...) robust across
+        # SQLite builds, and the stored '+00:00' offset yields a correct UTC epoch.
+        cur = self._conn.execute(
+            "SELECT MIN(ts) AS ts, "
+            "AVG(battery_soc), AVG(battery_power), AVG(pv_power), "
+            "AVG(grid_power), AVG(load_power) "
+            "FROM telemetry WHERE ts >= ? AND ts <= ? "
+            "GROUP BY CAST(strftime('%s', replace(ts, 'T', ' ')) AS INTEGER) / ? "
+            "ORDER BY ts",
+            (start.isoformat(), end.isoformat(), bucket_seconds),
+        )
+        out: list[Telemetry] = []
+        for ts, soc, bpow, pv, grid, load in cur.fetchall():
+            out.append(
+                Telemetry(
+                    ts=datetime.fromisoformat(ts),
+                    battery_soc=soc,
+                    battery_power=bpow,
+                    battery_voltage=0.0,
+                    battery_current=0.0,
+                    pv_power=pv,
+                    grid_power=grid,
+                    load_power=load,
+                    load_power_essential=0.0,
+                    grid_energy_in=0.0,
+                    grid_energy_out=0.0,
+                    pv_energy=0.0,
+                    load_energy=0.0,
+                    battery_energy_in=0.0,
+                    battery_energy_out=0.0,
+                    month_to_date_grid_import_kwh=0.0,
+                )
+            )
+        return out
+
     def prune_before(self, cutoff: datetime) -> int:
         cur = self._conn.execute("DELETE FROM telemetry WHERE ts < ?", (cutoff.isoformat(),))
         self._conn.commit()
