@@ -193,48 +193,6 @@ async function explain() {
   color: var(--sa-bad, #ef6b6b);
 }
 
-.explain__withheld {
-  padding: 0.95rem 1.1rem;
-  border-radius: 12px;
-  background: var(--sa-warn-soft, #d8a83a14);
-  border: 1px solid var(--sa-warn-line, #d8a83a44);
-}
-
-.explain__withheld-head {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  font-weight: 700;
-  font-size: 0.92rem;
-  color: var(--sa-warn, #e0b54a);
-}
-
-.explain__withheld-body {
-  margin: 0.5rem 0 0;
-  font-size: 0.9rem;
-  line-height: 1.55;
-  color: var(--sa-text, #eef2f7);
-}
-
-.explain__withheld-nums {
-  margin: 0.6rem 0 0;
-  font-size: 0.84rem;
-  color: var(--sa-text-dim, #9aa6b6);
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-
-.explain__num {
-  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-  padding: 0.12rem 0.4rem;
-  border-radius: 6px;
-  background: var(--sa-warn-soft, #d8a83a22);
-  color: var(--sa-warn, #e0b54a);
-  font-weight: 600;
-}
-
 .explain__note {
   display: flex;
   gap: 0.7rem;
