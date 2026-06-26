@@ -1,5 +1,7 @@
 from datetime import time
 
+import pytest
+
 from solar_advisor.config import AppConfig, load_config
 
 
@@ -87,3 +89,20 @@ def test_telemetry_retention_days_defaults_to_90(monkeypatch):
 def test_telemetry_retention_days_from_env(monkeypatch):
     monkeypatch.setenv("SA_TELEMETRY_RETENTION_DAYS", "30")
     assert load_config().telemetry_retention_days == 30
+
+
+def test_telemetry_retention_days_rejects_zero(monkeypatch):
+    monkeypatch.setenv("SA_TELEMETRY_RETENTION_DAYS", "0")
+    with pytest.raises(ValueError, match="SA_TELEMETRY_RETENTION_DAYS"):
+        load_config()
+
+
+def test_telemetry_retention_days_rejects_negative(monkeypatch):
+    monkeypatch.setenv("SA_TELEMETRY_RETENTION_DAYS", "-5")
+    with pytest.raises(ValueError, match="SA_TELEMETRY_RETENTION_DAYS"):
+        load_config()
+
+
+def test_telemetry_retention_days_accepts_one(monkeypatch):
+    monkeypatch.setenv("SA_TELEMETRY_RETENTION_DAYS", "1")
+    assert load_config().telemetry_retention_days == 1

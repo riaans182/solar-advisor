@@ -49,6 +49,12 @@ class AppConfig:
 
 def load_config() -> AppConfig:
     o = float(os.environ.get("SA_OBJECTIVE_DEFAULT", "0.5"))
+    retention_days = int(os.environ.get("SA_TELEMETRY_RETENTION_DAYS", "90"))
+    if retention_days < 1:
+        raise ValueError(
+            f"SA_TELEMETRY_RETENTION_DAYS must be >= 1 (got {retention_days}); "
+            "refusing to start to avoid deleting telemetry."
+        )
     return AppConfig(
         tariff_rate=float(os.environ.get("SA_TARIFF_RATE", "3.56")),
         tariff_fixed_charge=float(os.environ.get("SA_TARIFF_FIXED_CHARGE", "600")),
@@ -69,7 +75,7 @@ def load_config() -> AppConfig:
         forecast_tomorrow_kwh=float(os.environ.get("SA_FORECAST_TOMORROW_KWH", "20")),
         daily_consumption_kwh=float(os.environ.get("SA_DAILY_CONSUMPTION_KWH", "24")),
         tariff_window_days=int(os.environ.get("SA_TARIFF_WINDOW_DAYS", "90")),
-        telemetry_retention_days=int(os.environ.get("SA_TELEMETRY_RETENTION_DAYS", "90")),
+        telemetry_retention_days=retention_days,
         explain_model=os.environ.get("SA_EXPLAIN_MODEL", "claude-haiku-4-5"),
         explain_enabled=os.environ.get("SA_EXPLAIN_ENABLED", "true").strip().lower() != "false",
         explain_min_interval_s=float(os.environ.get("SA_EXPLAIN_MIN_INTERVAL_S", "10")),
