@@ -5,26 +5,11 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from solar_advisor.explain.context import ExplanationContext
+from solar_advisor.explain.context import ExplanationContext, deterministic_summary
 from solar_advisor.explain.guard import check_provenance
 from solar_advisor.explain.prompt import build_messages
 
 CompleteFn = Callable[[str, str], str]
-
-_DISABLED_MESSAGE = (
-    "AI explanations are turned off. The figures above come straight from the deterministic engine."
-)
-_RATE_LIMITED_MESSAGE = (
-    "Explanations are being requested too frequently — please wait a moment. The "
-    "engine figures above are current."
-)
-_WITHHELD_MESSAGE = (
-    "An explanation was generated but could not be verified against the engine's "
-    "numbers, so it was withheld. Read the engine figures above directly."
-)
-_UNAVAILABLE_MESSAGE = (
-    "An explanation could not be generated right now. The engine figures above are current."
-)
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,31 +40,29 @@ class Explainer:
         self._last_call: float | None = None
 
     def explain(self, ctx: ExplanationContext) -> ExplanationResult:
+        summary = deterministic_summary(ctx)
         if not self._enabled:
-            return ExplanationResult(text=_DISABLED_MESSAGE, generated=False, guard_ok=True)
+            return ExplanationResult(text=summary, generated=False, guard_ok=True)
 
         # Best-effort throttle: under FastAPI's threadpool this read-then-write of
         # _last_call is not atomic, so it is a coarse cost gate, not a correctness
         # boundary — provenance is enforced by the guard, not the limiter.
         now = self._now()
         if self._last_call is not None and (now - self._last_call) < self._min_interval_s:
-            return ExplanationResult(text=_RATE_LIMITED_MESSAGE, generated=False, guard_ok=True)
+            return ExplanationResult(text=summary, generated=False, guard_ok=True)
         self._last_call = now
 
         system, user = build_messages(ctx)
         try:
             reply = self._complete(system, user)
         except Exception:  # noqa: BLE001 - any provider failure degrades, never 500s
-            return ExplanationResult(text=_UNAVAILABLE_MESSAGE, generated=False, guard_ok=True)
+            return ExplanationResult(text=summary, generated=False, guard_ok=True)
         if not reply.strip():
-            return ExplanationResult(text=_UNAVAILABLE_MESSAGE, generated=False, guard_ok=True)
+            return ExplanationResult(text=summary, generated=False, guard_ok=True)
         result = check_provenance(reply, allowed=ctx.allowed_numbers())
         if not result.ok:
             return ExplanationResult(
-                text=_WITHHELD_MESSAGE,
-                generated=True,
-                guard_ok=False,
-                unverified=result.unverified,
+                text=summary, generated=False, guard_ok=False, unverified=result.unverified
             )
         return ExplanationResult(text=reply, generated=True, guard_ok=True)
 

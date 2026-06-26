@@ -1,12 +1,10 @@
 # tests/test_explain_client.py
 from solar_advisor.explain.client import (
-    _UNAVAILABLE_MESSAGE,
     Explainer,
     ExplanationResult,
 )
+from solar_advisor.explain.context import deterministic_summary
 from tests.test_explain_context import _dashboard_data
-
-WITHHELD_MARKER = "could not be verified"
 
 
 def _ctx():
@@ -47,10 +45,9 @@ def test_fabricated_number_is_withheld():
 
     explainer = Explainer(complete=fake_complete, enabled=True, min_interval_s=0.0)
     result = explainer.explain(_ctx())
-    assert result.generated is True
+    assert result.generated is False
     assert result.guard_ok is False
     assert 512.0 in result.unverified
-    assert WITHHELD_MARKER in result.text.lower()
     assert "512" not in result.text  # the hallucinating reply is not shown
 
 
@@ -66,9 +63,11 @@ def test_rate_limit_blocks_second_call_within_interval():
     first = explainer.explain(_ctx())
     assert first.generated is True
     clock[0] = 105.0  # 5s later, inside the 10s window
-    second = explainer.explain(_ctx())
+    ctx = _ctx()
+    second = explainer.explain(ctx)
     assert second.generated is False
-    assert "too frequently" in second.text.lower() or "rate" in second.text.lower()
+    assert second.guard_ok is True
+    assert second.text == deterministic_summary(ctx)
 
 
 def test_completion_failure_degrades_gracefully():
@@ -76,10 +75,11 @@ def test_completion_failure_degrades_gracefully():
         raise RuntimeError("anthropic down")
 
     explainer = Explainer(complete=boom, enabled=True, min_interval_s=0.0)
-    result = explainer.explain(_ctx())  # must not raise
+    ctx = _ctx()
+    result = explainer.explain(ctx)  # must not raise
     assert result.generated is False
     assert result.guard_ok is True
-    assert result.text == _UNAVAILABLE_MESSAGE
+    assert result.text == deterministic_summary(ctx)
 
 
 def test_empty_reply_degrades_gracefully():
@@ -87,7 +87,37 @@ def test_empty_reply_degrades_gracefully():
         return "   \n  "  # whitespace-only
 
     explainer = Explainer(complete=blank, enabled=True, min_interval_s=0.0)
-    result = explainer.explain(_ctx())
+    ctx = _ctx()
+    result = explainer.explain(ctx)
     assert result.generated is False
     assert result.guard_ok is True
-    assert result.text == _UNAVAILABLE_MESSAGE
+    assert result.text == deterministic_summary(ctx)
+
+
+def test_withheld_falls_back_to_deterministic_summary():
+    explainer = Explainer(
+        complete=lambda s, u: "Your bill will be R999999.99 next year.", enabled=True
+    )
+    ctx = _ctx()
+    res = explainer.explain(ctx)
+    assert res.guard_ok is False
+    assert res.generated is False
+    assert res.text == deterministic_summary(ctx)
+
+
+def test_disabled_returns_deterministic_summary():
+    explainer = Explainer(complete=lambda s, u: "unused", enabled=False)
+    ctx = _ctx()
+    res = explainer.explain(ctx)
+    assert res.generated is False
+    assert res.text == deterministic_summary(ctx)
+
+
+def test_successful_reply_is_returned_verbatim():
+    ctx = _ctx()
+    soc = ctx.battery_soc
+    explainer = Explainer(complete=lambda s, u: f"Battery is at {soc}%.", enabled=True)
+    res = explainer.explain(ctx)
+    assert res.generated is True
+    assert res.guard_ok is True
+    assert "Battery is at" in res.text
