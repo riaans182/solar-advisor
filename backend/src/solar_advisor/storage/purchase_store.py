@@ -15,6 +15,7 @@ class PurchaseStore(Protocol):
     def list_all(self) -> list[Purchase]: ...
     def list_since(self, cutoff: date) -> list[Purchase]: ...
     def delete(self, purchase_id: int) -> bool: ...
+    def update(self, purchase_id: int, purchase: Purchase) -> Purchase | None: ...
 
 
 class SqlitePurchaseStore:
@@ -81,6 +82,28 @@ class SqlitePurchaseStore:
         cur = self._conn.execute("DELETE FROM purchases WHERE id = ?", (purchase_id,))
         self._conn.commit()
         return cur.rowcount > 0
+
+    def update(self, purchase_id: int, purchase: Purchase) -> Purchase | None:
+        cur = self._conn.execute(
+            "UPDATE purchases SET purchased_at = ?, rand = ?, units_kwh = ?, note = ? WHERE id = ?",
+            (
+                purchase.purchased_at.isoformat(),
+                purchase.rand,
+                purchase.units_kwh,
+                purchase.note,
+                purchase_id,
+            ),
+        )
+        self._conn.commit()
+        if cur.rowcount == 0:
+            return None
+        return Purchase(
+            id=purchase_id,
+            purchased_at=purchase.purchased_at,
+            rand=purchase.rand,
+            units_kwh=purchase.units_kwh,
+            note=purchase.note,
+        )
 
     def close(self) -> None:
         self._conn.close()

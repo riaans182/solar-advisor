@@ -60,3 +60,22 @@ def test_data_persists_across_reopen(tmp_path):
 
 def test_satisfies_protocol(store):
     assert isinstance(store, PurchaseStore)
+
+
+def test_update_existing_returns_updated_row(store):
+    saved = store.add(_p(date(2026, 6, 1), rand=1000.0, units=250.0))
+    updated = store.update(
+        saved.id, Purchase(purchased_at=date(2026, 6, 2), rand=900.0, units_kwh=260.0, note="fixed")
+    )
+    assert updated is not None
+    assert updated.id == saved.id
+    assert updated.rand == 900.0
+    assert updated.units_kwh == 260.0
+    assert updated.purchased_at == date(2026, 6, 2)
+    assert updated.note == "fixed"
+    # persisted
+    assert store.list_all()[0].rand == 900.0
+
+
+def test_update_missing_returns_none(store):
+    assert store.update(999, _p(date(2026, 6, 1))) is None
