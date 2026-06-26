@@ -63,4 +63,14 @@ describe('PurchaseTable', () => {
     expect(w.emitted('update')).toBeFalsy()
     expect(w.find('[data-test="edit-rand-1"]').exists()).toBe(false)
   })
+
+  it('shows days of cover when daily consumption is provided', () => {
+    const w = mount(PurchaseTable, { props: { purchases, dailyConsumption: 25 } })
+    expect(w.text()).toContain('≈ 10 days')
+  })
+
+  it('omits days of cover when daily consumption is unknown', () => {
+    const w = mount(PurchaseTable, { props: { purchases, dailyConsumption: 0 } })
+    expect(w.text()).not.toContain('days')
+  })
 })

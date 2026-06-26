@@ -11,6 +11,7 @@ const purchases = ref<PurchaseView[]>([])
 const rate = ref(0)
 const source = ref('config')
 const sourceDate = ref<string | null>(null)
+const dailyConsumption = ref(0)
 const errorMsg = ref('')
 const showForm = ref(false)
 
@@ -28,6 +29,7 @@ async function loadTariff(): Promise<void> {
     rate.value = d.tariff_rate
     source.value = d.tariff_source
     sourceDate.value = d.tariff_source_date
+    dailyConsumption.value = d.daily_consumption_kwh
   } catch {
     // Tariff badge is non-critical; the page still works without it.
   }
@@ -78,7 +80,12 @@ onMounted(refresh)
       </div>
       <PurchaseForm v-if="showForm" @created="onCreated" />
       <PurchaseCharts :purchases="purchases" :current-rate="rate" />
-      <PurchaseTable :purchases="purchases" @delete="onDelete" @update="onUpdate" />
+      <PurchaseTable
+        :purchases="purchases"
+        :daily-consumption="dailyConsumption"
+        @delete="onDelete"
+        @update="onUpdate"
+      />
     </div>
   </div>
 </template>

@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import type { PurchaseView } from '../api/types'
 import { formatDate, formatRand, formatRatePerKwh, formatUnits } from '../lib/format'
 
-defineProps<{ purchases: PurchaseView[] }>()
+const props = defineProps<{ purchases: PurchaseView[]; dailyConsumption?: number }>()
 const emit = defineEmits<{
   delete: [id: number]
   update: [
@@ -21,6 +21,12 @@ const editRand = ref('')
 const editUnits = ref('')
 const editNote = ref('')
 const editError = ref('')
+
+function daysCover(unitsKwh: number): number | null {
+  const daily = props.dailyConsumption
+  if (!daily || daily <= 0) return null
+  return Math.round(unitsKwh / daily)
+}
 
 function arm(id: number): void {
   confirmingId.value = id
@@ -99,7 +105,10 @@ function saveEdit(id: number): void {
           <template v-else>
             <td>{{ formatDate(p.purchased_at) }}</td>
             <td class="pt__num">{{ formatRand(p.rand) }}</td>
-            <td class="pt__num">{{ formatUnits(p.units_kwh) }}</td>
+            <td class="pt__num">
+              {{ formatUnits(p.units_kwh) }}
+              <span v-if="daysCover(p.units_kwh) !== null" class="pt__cover">≈ {{ daysCover(p.units_kwh) }} days</span>
+            </td>
             <td class="pt__num pt__rate">{{ formatRatePerKwh(p.effective_rate) }}</td>
             <td class="pt__note">{{ p.note ?? '' }}</td>
             <td class="pt__actions">
@@ -177,6 +186,12 @@ function saveEdit(id: number): void {
   font-weight: 600;
 }
 .pt__note {
+  color: var(--sa-text-dim, #9aa6b6);
+}
+.pt__cover {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 400;
   color: var(--sa-text-dim, #9aa6b6);
 }
 .pt__actions {
