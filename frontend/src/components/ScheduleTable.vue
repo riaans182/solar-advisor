@@ -3,13 +3,15 @@ import type { SlotView } from '../api/types'
 import { behaviorLabel, behaviorTone } from '../lib/behavior'
 import { formatKwh, formatPercent, formatRand } from '../lib/format'
 
-defineProps<{ slots: SlotView[] }>()
+const props = withDefaults(defineProps<{ slots: SlotView[]; title?: string }>(), {
+  title: "Today's plan",
+})
 </script>
 
 <template>
   <section class="schedule" aria-label="Planned battery schedule">
     <header class="schedule__head">
-      <h3 class="schedule__title">Today's plan</h3>
+      <h3 class="schedule__title">{{ props.title }}</h3>
       <p class="schedule__hint">{{ slots.length }} slots · per-slot cost &amp; behaviour</p>
     </header>
 
