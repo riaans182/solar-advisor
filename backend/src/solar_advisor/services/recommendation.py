@@ -40,6 +40,7 @@ class DashboardData:
     tariff_rate: float
     tariff_source: str
     tariff_source_date: date | None
+    conversion_power: float
     expected_pv_kwh_today: float
     expected_pv_kwh_tomorrow: float
     disclaimer: str
@@ -119,6 +120,12 @@ class RecommendationService:
             month_to_date_import_kwh=telemetry.month_to_date_grid_import_kwh,
             days_in_month=days_in_month,
         )
+        conversion_power = (
+            telemetry.pv_power
+            + telemetry.grid_power
+            - telemetry.battery_power
+            - telemetry.load_power
+        )
         return DashboardData(
             telemetry=telemetry,
             objective=obj,
@@ -131,6 +138,7 @@ class RecommendationService:
             tariff_rate=derived.rate,
             tariff_source=derived.source,
             tariff_source_date=derived.source_date,
+            conversion_power=conversion_power,
             expected_pv_kwh_today=forecast.expected_pv_kwh_today,
             expected_pv_kwh_tomorrow=forecast.expected_pv_kwh_tomorrow,
             disclaimer=ADVISORY_DISCLAIMER,

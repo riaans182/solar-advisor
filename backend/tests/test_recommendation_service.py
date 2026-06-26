@@ -160,3 +160,13 @@ def test_tariff_falls_back_to_config_without_provider():
     assert data.tariff_source == "config"
     assert data.tariff_source_date is None
     assert data.tariff_rate == 3.56
+
+
+def test_dashboard_exposes_battery_and_conversion_power():
+    svc = RecommendationService(
+        config=_config(), estimator=_FakeEstimator(), forecast=_FakeForecast()
+    )
+    data = svc.build(_live_state(), objective=0.5)
+    assert data.telemetry.battery_power == 85
+    # conversion = pv + grid - battery_power - load = 106 + 1140 - 85 - 1086
+    assert data.conversion_power == 75

@@ -53,6 +53,8 @@ class DashboardView(BaseModel):
     pv_power: float
     grid_power: float
     load_power: float
+    battery_power: float
+    conversion_power: float
     month_to_date_grid_import_kwh: float
     usable_kwh: float
     usable_kwh_confidence: float
