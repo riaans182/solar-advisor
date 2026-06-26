@@ -116,3 +116,10 @@ def test_dashboard_view_includes_battery_and_conversion_power():
     body = _client(_ready_state()).get("/api/dashboard?objective=0.5").json()
     assert body["battery_power"] == 85
     assert body["conversion_power"] == 75
+
+
+def test_dashboard_view_includes_month_projection_fields():
+    body = _client(_ready_state()).get("/api/dashboard?objective=0.5").json()
+    assert "month_spend" in body
+    assert "month_projected_cost" in body
+    assert "month_balance" in body

@@ -105,6 +105,9 @@ def _to_view(data: DashboardData) -> DashboardView:
         ),
         expected_pv_kwh_today=round(data.expected_pv_kwh_today, 2),
         expected_pv_kwh_tomorrow=round(data.expected_pv_kwh_tomorrow, 2),
+        month_spend=round(data.month_spend),
+        month_projected_cost=round(data.month_projected_cost),
+        month_balance=round(data.month_balance),
         slots=[
             SlotView(
                 start=a.slot.start.isoformat(timespec="minutes"),
@@ -317,6 +320,7 @@ def create_production_app() -> FastAPI:
         estimator=estimator,
         forecast=forecast,
         tariff_provider=tariff_provider,
+        purchases=purchase_store,
     )
     explainer = Explainer(
         complete=anthropic_complete(config.explain_model, max_tokens=config.explain_max_tokens),
