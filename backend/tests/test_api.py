@@ -110,3 +110,9 @@ def test_two_apps_keep_independent_state():
 
     assert client_a.get("/api/dashboard").status_code == 200
     assert client_b.get("/api/dashboard").status_code == 503
+
+
+def test_dashboard_view_includes_battery_and_conversion_power():
+    body = _client(_ready_state()).get("/api/dashboard?objective=0.5").json()
+    assert body["battery_power"] == 85
+    assert body["conversion_power"] == 75

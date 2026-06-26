@@ -88,6 +88,8 @@ def _to_view(data: DashboardData) -> DashboardView:
         pv_power=data.telemetry.pv_power,
         grid_power=data.telemetry.grid_power,
         load_power=data.telemetry.load_power,
+        battery_power=round(data.telemetry.battery_power),
+        conversion_power=round(data.conversion_power),
         month_to_date_grid_import_kwh=data.telemetry.month_to_date_grid_import_kwh,
         usable_kwh=data.usable_kwh,
         usable_kwh_confidence=data.usable_kwh_confidence,
