@@ -190,3 +190,40 @@ def build_context(data: DashboardData) -> ExplanationContext:
         ),
         disclaimer=data.disclaimer,
     )
+
+
+def deterministic_summary(ctx: ExplanationContext) -> str:
+    """A plain-English summary built ONLY from engine facts — every number is an
+    allowed value, so it passes the provenance guard by construction. Used as the
+    fallback whenever the LLM text isn't shown, so the user never hits a dead end."""
+    r = ctx.recommendation
+    lines = [
+        "## Your system right now",
+        f"Battery at {ctx.battery_soc}%, solar {ctx.pv_power} W, load {ctx.load_power} W, "
+        f"grid {ctx.grid_power} W, on a flat R{ctx.tariff_rate}/kWh tariff.",
+        "",
+        "## What to change",
+    ]
+    if ctx.daily_saving >= 1:
+        lines.append(
+            f"Your schedule grid-charges more than you need. Following the recommended schedule "
+            f"would cut today's grid cost from R{ctx.current_daily_cost} to "
+            f"R{ctx.recommended_daily_cost} — a saving of about R{ctx.daily_saving} a day. "
+            f"With no cheap "
+            f"window, grid-charging only pays off for backup, and your solar plus battery already "
+            f"hold the {r.reserve_target_soc}% reserve (~{r.backup_hours} h of backup)."
+        )
+    else:
+        lines.append(
+            f"Your schedule already matches the advice — no needless grid-charging to cut. "
+            f"You're holding a {r.reserve_target_soc}% reserve (~{r.backup_hours} h of backup)."
+        )
+    lines += [
+        "",
+        "## This month",
+        f"Spent R{ctx.month_spend} so far; at today's usage you'll need about "
+        f"R{ctx.month_remaining_cost} more to finish the month.",
+        "",
+        ctx.disclaimer,
+    ]
+    return "\n".join(lines)

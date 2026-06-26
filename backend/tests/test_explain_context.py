@@ -4,7 +4,12 @@ from datetime import UTC, datetime, time
 from solar_advisor.domain.schedule import Slot
 from solar_advisor.engine.optimize import Recommendation
 from solar_advisor.engine.schedule_eval import SlotAssessment, SlotBehavior
-from solar_advisor.explain.context import ExplanationContext, build_context
+from solar_advisor.explain.context import (
+    ExplanationContext,
+    build_context,
+    deterministic_summary,
+)
+from solar_advisor.explain.guard import check_provenance
 from solar_advisor.explain.prompt import build_messages
 from solar_advisor.services.recommendation import ADVISORY_DISCLAIMER, DashboardData
 from tests.conftest import make_telemetry
@@ -133,3 +138,16 @@ def test_to_facts_mentions_saving_and_month():
     facts = ctx.to_facts()
     assert "saving" in facts.lower()
     assert "month" in facts.lower()
+
+
+def test_deterministic_summary_is_provenance_clean():
+    ctx = _context()
+    summary = deterministic_summary(ctx)
+    assert check_provenance(summary, allowed=ctx.allowed_numbers()).ok
+
+
+def test_deterministic_summary_calls_out_saving_when_present():
+    ctx = _context()
+    summary = deterministic_summary(ctx).lower()
+    assert "save" in summary or "saving" in summary
+    assert "this month" in summary
