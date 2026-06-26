@@ -35,6 +35,10 @@ const rateGeom = computed(() => {
   if (min === max) {
     min -= 0.5
     max += 0.5
+  } else {
+    const pad = (max - min) * 0.08
+    min -= pad
+    max += pad
   }
   const y = (v: number): number => H - PAD - ((v - min) / (max - min)) * (H - PAD * 2)
   const line = vals.map((v, i) => `${xFor(i, n).toFixed(1)},${y(v).toFixed(1)}`).join(' ')

@@ -35,7 +35,14 @@ const conversion = computed(() => Math.max(0, Math.round(props.dashboard.convers
     <article class="tile" :data-tone="socTone">
       <header class="tile__head">
         <span class="tile__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+          >
             <rect x="2" y="7" width="16" height="10" rx="2" />
             <path d="M20 10v4" stroke-linecap="round" />
             <rect x="4" y="9" width="10" height="6" rx="1" fill="currentColor" stroke="none" />
@@ -53,9 +60,19 @@ const conversion = computed(() => Math.max(0, Math.round(props.dashboard.convers
     <article class="tile" data-tone="solar">
       <header class="tile__head">
         <span class="tile__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+          >
             <circle cx="12" cy="12" r="4" />
-            <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke-linecap="round" />
+            <path
+              d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+              stroke-linecap="round"
+            />
           </svg>
         </span>
         <span class="tile__label">Solar</span>
@@ -67,7 +84,14 @@ const conversion = computed(() => Math.max(0, Math.round(props.dashboard.convers
     <article class="tile" :data-tone="gridFlow.tone">
       <header class="tile__head">
         <span class="tile__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+          >
             <path d="M9 2 4 12h5l-1 10 9-13h-6l2-7z" stroke-linejoin="round" />
           </svg>
         </span>
@@ -80,7 +104,14 @@ const conversion = computed(() => Math.max(0, Math.round(props.dashboard.convers
     <article class="tile" data-tone="neutral">
       <header class="tile__head">
         <span class="tile__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+          >
             <path d="M3 21V8l9-5 9 5v13" stroke-linejoin="round" />
             <path d="M9 21v-7h6v7" stroke-linejoin="round" />
           </svg>
@@ -94,7 +125,14 @@ const conversion = computed(() => Math.max(0, Math.round(props.dashboard.convers
     <article class="tile" data-tone="neutral">
       <header class="tile__head">
         <span class="tile__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+          >
             <path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5" stroke-linejoin="round" />
           </svg>
         </span>

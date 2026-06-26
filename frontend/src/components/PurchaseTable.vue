@@ -28,9 +28,9 @@ function confirm(id: number): void {
       <thead>
         <tr>
           <th>Date</th>
-          <th>Paid</th>
-          <th>Units</th>
-          <th>Rate</th>
+          <th class="pt__th-num">Paid</th>
+          <th class="pt__th-num">Units</th>
+          <th class="pt__th-num">Rate</th>
           <th>Note</th>
           <th aria-label="actions" />
         </tr>
@@ -101,6 +101,9 @@ function confirm(id: number): void {
   padding: 0.55rem 0.6rem;
   border-bottom: 1px solid var(--sa-line, #1f2733);
   color: var(--sa-text, #eef2f7);
+}
+.pt__th-num {
+  text-align: right;
 }
 .pt__num {
   text-align: right;

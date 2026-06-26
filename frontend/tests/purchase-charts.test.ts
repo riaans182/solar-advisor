@@ -50,4 +50,16 @@ describe('PurchaseCharts', () => {
     expect(w.findAll('[data-test="spend-bar"]')).toHaveLength(1)
     expect(w.find('[data-test="rate-ref"]').exists()).toBe(true)
   })
+
+  it('keeps the lowest rate off the chart baseline (no false zero)', () => {
+    const rising = [
+      { id: 2, purchased_at: '2026-06-15', rand: 1000, units_kwh: 320, note: null, effective_rate: 3.125 },
+      { id: 1, purchased_at: '2026-05-01', rand: 1000, units_kwh: 250, note: null, effective_rate: 4.0 },
+    ]
+    const w = mount(PurchaseCharts, { props: { purchases: rising, currentRate: 3.125 } })
+    const pts = w.get('[data-test="rate-line"]').attributes('points') as string
+    const ys = pts.split(' ').map((pair) => Number(pair.split(',')[1]))
+    // viewBox H=110, PAD=10 -> baseline y=100. Padding must keep all points strictly above it.
+    expect(Math.max(...ys)).toBeLessThan(100)
+  })
 })
