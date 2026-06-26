@@ -40,6 +40,7 @@ def _dashboard_data():
         tariff_rate=3.56,
         tariff_source="config",
         tariff_source_date=None,
+        conversion_power=75.0,
         expected_pv_kwh_today=8.0,
         expected_pv_kwh_tomorrow=8.0,
         disclaimer=ADVISORY_DISCLAIMER,
