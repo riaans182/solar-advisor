@@ -8,6 +8,7 @@ services:
       SA_MQTT_USER: ${SA_MQTT_USER:-}
       SA_MQTT_PASS: ${SA_MQTT_PASS:-}
       SA_DB_PATH: /data/solar_advisor.db
+      SA_TELEMETRY_RETENTION_DAYS: ${SA_TELEMETRY_RETENTION_DAYS:-90}
     volumes:
       - sa_data:/data
     restart: unless-stopped
