@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass
 from datetime import time
+
+from solar_advisor.forecast.forecast_solar_provider import PvArray
 
 
 def _parse_hhmm(value: str) -> time:
@@ -39,12 +42,37 @@ class AppConfig:
     forecast_tomorrow_kwh: float
     daily_consumption_kwh: float = 24.0  # fallback when the estimator's confidence is 0
     tariff_window_days: int = 90  # trailing window for the data-derived marginal rate
+    forecast_source: str = "static"  # "static" | "forecast_solar"
+    lat: float = -33.92
+    lon: float = 18.42
+    forecast_ttl_s: float = 10800.0  # 3h cache for the Forecast.Solar call
+    pv_arrays: tuple[PvArray, ...] = ()
     telemetry_retention_days: int = 90  # collector prunes telemetry rows older than this
     # Explain layer (Plan D)
     explain_model: str = "claude-haiku-4-5"
     explain_enabled: bool = True
     explain_min_interval_s: float = 10.0
     explain_max_tokens: int = 2048
+
+
+_DEFAULT_PV_ARRAYS: tuple[PvArray, ...] = (
+    PvArray(tilt=26.0, azimuth=-135.0, kwp=2.5),  # 5 panels NE
+    PvArray(tilt=26.0, azimuth=45.0, kwp=2.5),  # 5 panels SW
+)
+
+
+def _parse_pv_arrays(raw: str | None) -> tuple[PvArray, ...]:
+    if not raw:
+        return _DEFAULT_PV_ARRAYS
+    try:
+        items = json.loads(raw)
+        parsed = tuple(
+            PvArray(tilt=float(i["tilt"]), azimuth=float(i["azimuth"]), kwp=float(i["kwp"]))
+            for i in items
+        )
+        return parsed or _DEFAULT_PV_ARRAYS
+    except (ValueError, TypeError, KeyError):
+        return _DEFAULT_PV_ARRAYS
 
 
 def load_config() -> AppConfig:
@@ -75,6 +103,11 @@ def load_config() -> AppConfig:
         forecast_tomorrow_kwh=float(os.environ.get("SA_FORECAST_TOMORROW_KWH", "20")),
         daily_consumption_kwh=float(os.environ.get("SA_DAILY_CONSUMPTION_KWH", "24")),
         tariff_window_days=int(os.environ.get("SA_TARIFF_WINDOW_DAYS", "90")),
+        forecast_source=os.environ.get("SA_FORECAST_SOURCE", "static"),
+        lat=float(os.environ.get("SA_LAT", "-33.92")),
+        lon=float(os.environ.get("SA_LON", "18.42")),
+        forecast_ttl_s=float(os.environ.get("SA_FORECAST_TTL_S", "10800")),
+        pv_arrays=_parse_pv_arrays(os.environ.get("SA_PV_ARRAYS")),
         telemetry_retention_days=retention_days,
         explain_model=os.environ.get("SA_EXPLAIN_MODEL", "claude-haiku-4-5"),
         explain_enabled=os.environ.get("SA_EXPLAIN_ENABLED", "true").strip().lower() != "false",

@@ -106,3 +106,31 @@ def test_telemetry_retention_days_rejects_negative(monkeypatch):
 def test_telemetry_retention_days_accepts_one(monkeypatch):
     monkeypatch.setenv("SA_TELEMETRY_RETENTION_DAYS", "1")
     assert load_config().telemetry_retention_days == 1
+
+
+def test_forecast_defaults(monkeypatch):
+    for k in ("SA_FORECAST_SOURCE", "SA_LAT", "SA_LON", "SA_PV_ARRAYS", "SA_FORECAST_TTL_S"):
+        monkeypatch.delenv(k, raising=False)
+    from solar_advisor.config import load_config
+
+    cfg = load_config()
+    assert cfg.forecast_source == "static"
+    assert cfg.lat == -33.92
+    assert cfg.lon == 18.42
+    assert len(cfg.pv_arrays) == 2
+    assert cfg.pv_arrays[0].kwp == 2.5
+
+
+def test_pv_arrays_malformed_falls_back_to_default(monkeypatch):
+    monkeypatch.setenv("SA_PV_ARRAYS", "not json")
+    from solar_advisor.config import load_config
+
+    cfg = load_config()
+    assert len(cfg.pv_arrays) == 2
+
+
+def test_forecast_source_from_env(monkeypatch):
+    monkeypatch.setenv("SA_FORECAST_SOURCE", "forecast_solar")
+    from solar_advisor.config import load_config
+
+    assert load_config().forecast_source == "forecast_solar"
