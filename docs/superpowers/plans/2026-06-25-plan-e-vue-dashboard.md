@@ -212,7 +212,7 @@ git commit -m "feat(api): /api/history endpoint for trend charts"
 - [ ] **Step 1: Scaffold with Vite (Vue + TS)**
 
 ```bash
-cd /Users/riaans/Projects/solar-assisstant
+cd <repo-root>
 npm create vite@latest frontend -- --template vue-ts
 cd frontend
 npm install
