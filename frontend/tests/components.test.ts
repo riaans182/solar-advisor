@@ -163,4 +163,13 @@ describe('LiveTiles battery flow + conversion', () => {
     expect(w.text()).toContain('%/h')
     expect(w.text()).toContain('2.8')
   })
+
+  it('shows a solar forecast tile with today and tomorrow', () => {
+    const w = mount(LiveTiles, {
+      props: { dashboard: dash({ expected_pv_kwh_today: 10.9, expected_pv_kwh_tomorrow: 12.4 }) },
+    })
+    expect(w.text().toLowerCase()).toContain('forecast')
+    expect(w.text()).toContain('10.9')
+    expect(w.text().toLowerCase()).toContain('tomorrow')
+  })
 })

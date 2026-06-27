@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { DashboardView } from '../api/types'
-import { formatPercent, formatPower } from '../lib/format'
+import { formatKwh, formatPercent, formatPower } from '../lib/format'
 
 const props = defineProps<{ dashboard: DashboardView }>()
 
@@ -142,6 +142,21 @@ const conversion = computed(() => Math.max(0, Math.round(props.dashboard.convers
       </header>
       <p class="tile__value">{{ formatPower(conversion) }}</p>
       <p class="tile__sub">inverter overhead + losses</p>
+    </article>
+
+    <article class="tile" data-tone="solar">
+      <header class="tile__head">
+        <span class="tile__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M3 12h2M19 12h2M12 3v2M5.6 5.6l1.4 1.4M17 17l1.4 1.4" stroke-linecap="round" />
+            <path d="M8 18a4 4 0 0 1 8 0" stroke-linecap="round" />
+            <path d="M12 9a3 3 0 0 0-3 3h6a3 3 0 0 0-3-3Z" />
+          </svg>
+        </span>
+        <span class="tile__label">Solar forecast</span>
+      </header>
+      <p class="tile__value">{{ formatKwh(dashboard.expected_pv_kwh_today) }}</p>
+      <p class="tile__sub">{{ formatKwh(dashboard.expected_pv_kwh_tomorrow) }} tomorrow</p>
     </article>
   </section>
 </template>
