@@ -15,6 +15,25 @@ Python 3.12 · FastAPI · Vue 3 + TypeScript · Docker
 
 ---
 
+## Screenshots
+
+> Rendered against **seeded demo data** — the numbers are illustrative, not real meter
+> readings.
+
+**Dashboard** — live tiles (battery %/h, solar, grid, load, inverter conversion, PV
+forecast), today's plan beside the **recommended inverter settings**, the headline R/day
+saving with its resilience trade-off, the cost↔resilience slider, and the guarded
+plain-language explanation. Every figure is produced by the deterministic engine.
+
+![Solar Advisor dashboard](docs/img/dashboard.png)
+
+**Prepaid tracker** — log each electricity purchase; the app derives your effective
+R/kWh, trends it over time, and estimates how many days each top-up covers.
+
+![Prepaid purchase tracker](docs/img/purchases.png)
+
+---
+
 ## The thesis: a hard boundary between the engine and the explanation
 
 The point of this project is the line drawn down the middle of it — and that it's
