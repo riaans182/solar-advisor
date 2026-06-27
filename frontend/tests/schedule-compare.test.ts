@@ -23,11 +23,23 @@ describe('ScheduleCompare', () => {
     const current = [slot({ grid_charge: true })]
     const recommended = [slot({ grid_charge: false, target_soc: 60, behavior: 'holding', cost: 0 })]
     const w = mount(ScheduleCompare, {
-      props: { current, recommended, dailySaving: 46, currentCost: 46, recommendedCost: 0 },
+      props: {
+        current,
+        recommended,
+        dailySaving: 46,
+        currentCost: 46,
+        recommendedCost: 0,
+        reserveTargetSoc: 60,
+        backupHours: 7.5,
+      },
     })
     expect(w.text()).toContain('R46')
     expect(w.text().toLowerCase()).toContain('recommended inverter settings')
     expect(w.findAll('table').length).toBe(2)
+    // surfaces the resilience trade-off so "switch it all off" isn't alarming
+    expect(w.text().toLowerCase()).toContain('essential backup')
+    expect(w.text().toLowerCase()).toContain('resilience slider')
+    expect(w.text()).toContain('7.5')
   })
 
   it('says it already matches when current == recommended', () => {
@@ -38,6 +50,8 @@ describe('ScheduleCompare', () => {
         dailySaving: 0,
         currentCost: 0,
         recommendedCost: 0,
+        reserveTargetSoc: 60,
+        backupHours: 7.5,
       },
     })
     expect(w.text().toLowerCase()).toContain('already matches')

@@ -172,6 +172,8 @@ onBeforeUnmount(() => {
               :daily-saving="dashboard.daily_saving"
               :current-cost="dashboard.current_daily_cost"
               :recommended-cost="dashboard.recommended_daily_cost"
+              :reserve-target-soc="dashboard.recommendation.reserve_target_soc"
+              :backup-hours="dashboard.recommendation.backup_hours"
             />
             <ExplainPanel :objective="objective" />
           </div>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { SlotView } from '../api/types'
-import { formatRand } from '../lib/format'
+import { formatPercent, formatRand } from '../lib/format'
 import ScheduleTable from './ScheduleTable.vue'
 import ScheduleSettings from './ScheduleSettings.vue'
 
@@ -11,6 +11,8 @@ const props = defineProps<{
   dailySaving: number
   currentCost: number
   recommendedCost: number
+  reserveTargetSoc: number
+  backupHours: number
 }>()
 
 const changedSlots = computed(() =>
@@ -36,6 +38,12 @@ const matches = computed(() => changedSlots.value.length === 0)
       <strong>Save ≈ {{ formatRand(dailySaving) }}/day</strong> — switch to the recommended schedule
       (today {{ formatRand(currentCost) }} → {{ formatRand(recommendedCost) }}). Changes in
       slot{{ changedSlots.length > 1 ? 's' : '' }} {{ changedSlots.join(', ') }}.
+      <span class="cmp__tradeoff">
+        You'd still keep ~{{ backupHours.toFixed(1) }} h of essential backup (your
+        {{ formatPercent(reserveTargetSoc) }} reserve) — solar refills the battery and the inverter
+        won't discharge below that floor. Want a bigger buffer for unexpected outages? Raise the
+        resilience slider — it keeps grid-charging to a higher SOC (the saving shrinks to pay for it).
+      </span>
     </p>
 
     <div class="cmp__tables">
@@ -66,6 +74,13 @@ const matches = computed(() => changedSlots.value.length === 0)
 }
 .cmp__action strong {
   color: var(--sa-warn, #e0b54a);
+}
+.cmp__tradeoff {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--sa-text-dim, #c2ccda);
 }
 .cmp__ok {
   background: var(--sa-good-soft, #34d39912);
