@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import type { SlotView } from '../api/types'
 import { formatRand } from '../lib/format'
 import ScheduleTable from './ScheduleTable.vue'
+import ScheduleSettings from './ScheduleSettings.vue'
 
 const props = defineProps<{
   current: SlotView[]
@@ -38,8 +39,8 @@ const matches = computed(() => changedSlots.value.length === 0)
     </p>
 
     <div class="cmp__tables">
-      <ScheduleTable :slots="current" title="Current schedule" />
-      <ScheduleTable v-if="!matches" :slots="recommended" title="Recommended schedule" />
+      <ScheduleTable :slots="current" title="Today's plan" />
+      <ScheduleSettings v-if="!matches" :current="current" :recommended="recommended" />
     </div>
   </section>
 </template>

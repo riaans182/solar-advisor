@@ -26,7 +26,7 @@ describe('ScheduleCompare', () => {
       props: { current, recommended, dailySaving: 46, currentCost: 46, recommendedCost: 0 },
     })
     expect(w.text()).toContain('R46')
-    expect(w.text().toLowerCase()).toContain('recommended schedule')
+    expect(w.text().toLowerCase()).toContain('recommended inverter settings')
     expect(w.findAll('table').length).toBe(2)
   })
 
