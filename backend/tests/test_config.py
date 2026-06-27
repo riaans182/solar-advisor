@@ -134,3 +134,17 @@ def test_forecast_source_from_env(monkeypatch):
     from solar_advisor.config import load_config
 
     assert load_config().forecast_source == "forecast_solar"
+
+
+def test_max_grid_charge_power_default(monkeypatch):
+    monkeypatch.delenv("SA_MAX_GRID_CHARGE_POWER_W", raising=False)
+    from solar_advisor.config import load_config
+
+    assert load_config().max_grid_charge_power_w == 3640.0
+
+
+def test_max_grid_charge_power_from_env(monkeypatch):
+    monkeypatch.setenv("SA_MAX_GRID_CHARGE_POWER_W", "3000")
+    from solar_advisor.config import load_config
+
+    assert load_config().max_grid_charge_power_w == 3000.0

@@ -96,6 +96,7 @@ class RecommendationService:
             soc_floor_pct=cfg.battery_soc_floor_pct,
             max_charge_power_w=cfg.max_charge_power_w,
             max_discharge_power_w=cfg.max_discharge_power_w,
+            max_grid_charge_power_w=cfg.max_grid_charge_power_w,
         )
         if self._tariff_provider is not None:
             derived = self._tariff_provider.current_rate(telemetry.ts.date())

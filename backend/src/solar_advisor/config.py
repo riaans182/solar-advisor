@@ -40,6 +40,9 @@ class AppConfig:
     # Forecast (static fallback values, kWh)
     forecast_today_kwh: float
     forecast_tomorrow_kwh: float
+    max_grid_charge_power_w: float = (
+        0.0  # W cap for grid->battery charging; 0 => engine uses max_charge
+    )
     daily_consumption_kwh: float = 24.0  # fallback when the estimator's confidence is 0
     tariff_window_days: int = 90  # trailing window for the data-derived marginal rate
     forecast_source: str = "static"  # "static" | "forecast_solar"
@@ -91,6 +94,7 @@ def load_config() -> AppConfig:
         battery_soc_floor_pct=float(os.environ.get("SA_BATTERY_SOC_FLOOR_PCT", "20")),
         max_charge_power_w=float(os.environ.get("SA_MAX_CHARGE_POWER_W", "7950")),
         max_discharge_power_w=float(os.environ.get("SA_MAX_DISCHARGE_POWER_W", "7950")),
+        max_grid_charge_power_w=float(os.environ.get("SA_MAX_GRID_CHARGE_POWER_W", "3640")),
         essential_power_w=float(os.environ.get("SA_ESSENTIAL_POWER_W", "1136")),
         daylight_dawn=_parse_hhmm(os.environ.get("SA_DAYLIGHT_DAWN", "07:00")),
         daylight_dusk=_parse_hhmm(os.environ.get("SA_DAYLIGHT_DUSK", "17:30")),
