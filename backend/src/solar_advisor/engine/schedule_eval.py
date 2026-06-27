@@ -98,7 +98,8 @@ def assess_schedule(
         grid_charge = 0.0
         target_kwh = battery.soc_to_kwh(slot.target_soc)
         if slot.grid_charge and soc_kwh < target_kwh:
-            max_charge_kwh = battery.max_charge_power_w / 1000.0 * hours
+            grid_charge_power_w = battery.max_grid_charge_power_w or battery.max_charge_power_w
+            max_charge_kwh = grid_charge_power_w / 1000.0 * hours
             grid_charge = min(target_kwh - soc_kwh, max_charge_kwh)
             soc_kwh += grid_charge
             grid_import += grid_charge

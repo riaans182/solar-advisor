@@ -13,6 +13,7 @@ class BatteryModel:
     soc_floor_pct: float
     max_charge_power_w: float
     max_discharge_power_w: float
+    max_grid_charge_power_w: float = 0.0  # 0 => use max_charge_power_w (grid charge ≤ solar charge)
 
     def soc_to_kwh(self, soc_pct: float) -> float:
         return self.usable_kwh * soc_pct / 100.0
