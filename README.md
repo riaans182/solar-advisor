@@ -119,15 +119,11 @@ container — so the SPA calls a same-origin API in production.
 
 ## Running it
 
-From `backend/` (where `docker-compose.yml` lives), create a `.env` with at least the
-required variables, then bring the stack up:
+From `backend/` (where `docker-compose.yml` lives), create a `.env` from the template
+and bring the stack up:
 
 ```bash
-cat > .env <<'EOF'
-SA_MQTT_HOST=your-solarassistant-host
-ANTHROPIC_API_KEY=sk-ant-...        # only needed if the Explain panel is enabled
-SA_FORECAST_SOURCE=forecast_solar   # real Forecast.Solar; omit to use a static estimate
-EOF
+cp .env.example .env       # then edit: at least SA_MQTT_HOST + ANTHROPIC_API_KEY
 docker compose up --build
 ```
 
@@ -139,6 +135,9 @@ Then open:
 Without a real inverter you can still explore the **Purchases** tab and the API — it's
 fully self-contained; the live dashboard shows a "waiting for data" state until telemetry
 arrives.
+
+For a self-hosted box (Proxmox LXC/VM or any Docker host), see
+**[docs/deployment.md](docs/deployment.md)** — provisioning, backups, and updates.
 
 ### Configuration (selected env vars; full set in `backend/src/solar_advisor/config.py`)
 
