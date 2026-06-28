@@ -43,10 +43,11 @@ onBeforeUnmount(() => {
   padding: 8px;
 }
 
-/* Force a single full-width row of tiles so the strip reads as one clean band,
-   regardless of how wide the host frame is. */
+/* Flow the tiles: as many across as fit, wrapping to more rows when the host
+   frame is narrow. One clean row of six when there's room; 3×2 / 2×3 etc. when
+   not — so the strip drops beside other cards without squashing. */
 .embed :deep(.tiles) {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 0.6rem;
 }
 
@@ -67,12 +68,5 @@ onBeforeUnmount(() => {
   text-align: center;
   color: var(--sa-text-dim, #9aa6b6);
   font-size: 0.9rem;
-}
-
-/* A narrow host (portrait) wraps the band into two rows rather than squashing. */
-@media (max-width: 760px) {
-  .embed :deep(.tiles) {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 </style>
