@@ -86,6 +86,17 @@ body {
   min-height: 100vh;
 }
 
+/* Embed mode (/?embed=tiles): drop the page background so the live-tiles strip
+   blends into whatever host frames it (e.g. a Home Assistant dashboard). */
+html[data-embed='tiles'],
+html[data-embed='tiles'] body {
+  background: transparent;
+}
+html[data-embed='tiles'] body,
+html[data-embed='tiles'] #app {
+  min-height: 0;
+}
+
 ::selection {
   background: var(--sa-accent-line);
   color: #fff;

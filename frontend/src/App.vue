@@ -1,23 +1,41 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import Dashboard from './views/Dashboard.vue'
 import Purchases from './views/Purchases.vue'
+import EmbedTiles from './views/EmbedTiles.vue'
+
+// Embed mode (/?embed=tiles) renders a chrome-free live-tiles strip for
+// embedding in another dashboard (e.g. Home Assistant). It's decided once from
+// the URL at load — there's no in-app navigation into or out of it.
+const embed = new URLSearchParams(window.location.search).get('embed') === 'tiles'
 
 type Tab = 'dashboard' | 'purchases'
 const tab = ref<Tab>('dashboard')
+
+// In embed mode, strip the page's own background so the strip blends into the
+// host frame. Toggled on <html> so it overrides body's gradient too.
+onMounted(() => {
+  if (embed) document.documentElement.dataset.embed = 'tiles'
+})
+onBeforeUnmount(() => {
+  delete document.documentElement.dataset.embed
+})
 </script>
 
 <template>
-  <nav class="nav" aria-label="Primary">
-    <button class="nav__tab" :data-active="tab === 'dashboard'" @click="tab = 'dashboard'">
-      Dashboard
-    </button>
-    <button class="nav__tab" :data-active="tab === 'purchases'" @click="tab = 'purchases'">
-      Purchases
-    </button>
-  </nav>
-  <Dashboard v-if="tab === 'dashboard'" />
-  <Purchases v-else />
+  <EmbedTiles v-if="embed" />
+  <template v-else>
+    <nav class="nav" aria-label="Primary">
+      <button class="nav__tab" :data-active="tab === 'dashboard'" @click="tab = 'dashboard'">
+        Dashboard
+      </button>
+      <button class="nav__tab" :data-active="tab === 'purchases'" @click="tab = 'purchases'">
+        Purchases
+      </button>
+    </nav>
+    <Dashboard v-if="tab === 'dashboard'" />
+    <Purchases v-else />
+  </template>
 </template>
 
 <style scoped>
