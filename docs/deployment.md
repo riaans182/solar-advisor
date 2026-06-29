@@ -83,11 +83,12 @@ defaults live in `backend/.env.example`.
 
 ## Operating it
 
-- **Update to a new version:**
+- **Update to a new version** — one command from the repo root:
   ```bash
-  cd solar-advisor && git pull
-  cd backend && docker compose up -d --build
+  ./update.sh
   ```
+  (Pulls the latest code, rebuilds, restarts, prunes old images, and prints status.
+  Equivalent to `git pull --ff-only && cd backend && docker compose up -d --build`.)
 - **Data & backups:** telemetry and logged purchases live in the `sa_data` Docker
   volume (mounted at `/data`, SQLite). Back it up with:
   ```bash
