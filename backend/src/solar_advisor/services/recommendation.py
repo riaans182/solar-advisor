@@ -36,6 +36,7 @@ class DashboardData:
     recommendation: Recommendation
     usable_kwh: float
     usable_kwh_confidence: float
+    battery_soc_floor: float  # inverter discharge cutoff %, for time-to-reserve
     daily_consumption_kwh: float
     daily_consumption_confidence: float
     tariff_rate: float
@@ -175,6 +176,7 @@ class RecommendationService:
             recommendation=rec,
             usable_kwh=usable_kwh,
             usable_kwh_confidence=est.usable_kwh_confidence,
+            battery_soc_floor=cfg.battery_soc_floor_pct,
             daily_consumption_kwh=daily_kwh,
             daily_consumption_confidence=est.daily_consumption_confidence,
             tariff_rate=derived.rate,

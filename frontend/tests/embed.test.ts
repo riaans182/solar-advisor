@@ -14,6 +14,7 @@ const DASH = {
   month_to_date_grid_import_kwh: 12.5,
   usable_kwh: 15,
   usable_kwh_confidence: 0.6,
+  battery_soc_floor: 20,
   daily_consumption_kwh: 20,
   daily_consumption_confidence: 0.5,
   tariff_rate: 3.56,

@@ -113,6 +113,7 @@ function dash(over: Partial<DashboardView> = {}): DashboardView {
     month_to_date_grid_import_kwh: 100,
     usable_kwh: 15,
     usable_kwh_confidence: 0.6,
+    battery_soc_floor: 20,
     daily_consumption_kwh: 24,
     daily_consumption_confidence: 0.5,
     tariff_rate: 3.56,
@@ -162,6 +163,32 @@ describe('LiveTiles battery flow + conversion', () => {
     const w = mount(LiveTiles, { props: { dashboard: dash({ battery_power: 420, usable_kwh: 15 }) } })
     expect(w.text()).toContain('%/h')
     expect(w.text()).toContain('2.8')
+  })
+
+  it('shows time-to-full when charging', () => {
+    // 50% -> 100% of 15 kWh = 7.5 kWh at 1500 W -> 5h.
+    const w = mount(LiveTiles, {
+      props: { dashboard: dash({ battery_power: 1500, battery_soc: 50, usable_kwh: 15 }) },
+    })
+    expect(w.text().toLowerCase()).toContain('full in')
+    expect(w.text()).toContain('5h 0m')
+  })
+
+  it('shows time-to-reserve when discharging (to the SOC floor, not 0%)', () => {
+    // 65% -> 20% floor of 15 kWh = 6.75 kWh at 1500 W -> 4h 30m.
+    const w = mount(LiveTiles, {
+      props: {
+        dashboard: dash({ battery_power: -1500, battery_soc: 65, usable_kwh: 15, battery_soc_floor: 20 }),
+      },
+    })
+    expect(w.text()).toContain('4h 30m')
+    expect(w.text().toLowerCase()).toContain('reserve')
+  })
+
+  it('shows no ETA line when the battery is idle', () => {
+    const w = mount(LiveTiles, { props: { dashboard: dash({ battery_power: 0 }) } })
+    expect(w.text().toLowerCase()).not.toContain('full in')
+    expect(w.text().toLowerCase()).not.toContain('to reserve')
   })
 
   it('shows a solar forecast tile with today and tomorrow', () => {

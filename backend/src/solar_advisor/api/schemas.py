@@ -59,6 +59,7 @@ class DashboardView(BaseModel):
     month_to_date_grid_import_kwh: float
     usable_kwh: float
     usable_kwh_confidence: float
+    battery_soc_floor: float
     daily_consumption_kwh: float
     daily_consumption_confidence: float
     tariff_rate: float

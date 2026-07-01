@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { DashboardView } from '../api/types'
-import { formatKwh, formatPercent, formatPower } from '../lib/format'
+import { formatDuration, formatKwh, formatPercent, formatPower } from '../lib/format'
 
 const props = defineProps<{ dashboard: DashboardView }>()
 
@@ -30,6 +30,26 @@ const batteryFlow = computed(() => {
 })
 
 const conversion = computed(() => Math.max(0, Math.round(props.dashboard.conversion_power)))
+
+// Time-to-full (charging) or time-to-reserve (discharging), extrapolated from the
+// current battery power. Discharge runs down only to the inverter's SOC floor
+// (the cutoff), not to 0%. Blank when idle or when capacity is unknown.
+const eta = computed(() => {
+  const p = props.dashboard.battery_power // W, + charging
+  const soc = props.dashboard.battery_soc
+  const cap = props.dashboard.usable_kwh
+  const floor = props.dashboard.battery_soc_floor
+  if (cap <= 0) return ''
+  if (p > 1) {
+    const kwh = ((100 - soc) / 100) * cap
+    return kwh <= 0 ? 'fully charged' : `full in ${formatDuration(kwh / (p / 1000))}`
+  }
+  if (p < -1) {
+    const kwh = ((soc - floor) / 100) * cap
+    return kwh <= 0 ? 'at reserve' : `${formatDuration(kwh / (-p / 1000))} to reserve`
+  }
+  return ''
+})
 </script>
 
 <template>
@@ -57,6 +77,7 @@ const conversion = computed(() => Math.max(0, Math.round(props.dashboard.convers
       <div class="tile__bar" aria-hidden="true">
         <span :style="{ width: Math.min(100, Math.max(0, dashboard.battery_soc)) + '%' }" />
       </div>
+      <p v-if="eta" class="tile__eta">{{ eta }}</p>
     </article>
 
     <article class="tile" data-tone="solar">
@@ -236,6 +257,14 @@ const conversion = computed(() => Math.max(0, Math.round(props.dashboard.convers
   margin: 0;
   font-size: 0.8rem;
   color: var(--sa-text-dim, #9aa6b6);
+}
+
+.tile__eta {
+  margin: 0.5rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
 }
 
 .tile__bar {

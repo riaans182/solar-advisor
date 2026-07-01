@@ -111,6 +111,7 @@ def _to_view(data: DashboardData) -> DashboardView:
         month_to_date_grid_import_kwh=data.telemetry.month_to_date_grid_import_kwh,
         usable_kwh=data.usable_kwh,
         usable_kwh_confidence=data.usable_kwh_confidence,
+        battery_soc_floor=data.battery_soc_floor,
         daily_consumption_kwh=data.daily_consumption_kwh,
         daily_consumption_confidence=data.daily_consumption_confidence,
         tariff_rate=data.tariff_rate,

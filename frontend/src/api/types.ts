@@ -33,6 +33,7 @@ export interface DashboardView {
   month_to_date_grid_import_kwh: number
   usable_kwh: number
   usable_kwh_confidence: number
+  battery_soc_floor: number
   daily_consumption_kwh: number
   daily_consumption_confidence: number
   tariff_rate: number

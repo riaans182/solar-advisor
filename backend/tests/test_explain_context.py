@@ -40,6 +40,7 @@ def _dashboard_data():
         recommendation=rec,
         usable_kwh=15.0,
         usable_kwh_confidence=0.6,
+        battery_soc_floor=20.0,
         daily_consumption_kwh=20.0,
         daily_consumption_confidence=0.5,
         tariff_rate=3.56,
