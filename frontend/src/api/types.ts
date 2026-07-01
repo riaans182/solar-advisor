@@ -47,6 +47,8 @@ export interface DashboardView {
   current_daily_cost: number
   recommended_daily_cost: number
   daily_saving: number
+  pv_energy_today: number
+  load_energy_today: number
   slots: SlotView[]
   recommendation: RecommendationView
   disclaimer: string

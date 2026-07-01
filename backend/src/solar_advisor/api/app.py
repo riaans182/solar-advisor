@@ -127,6 +127,8 @@ def _to_view(data: DashboardData) -> DashboardView:
         current_daily_cost=round(data.current_daily_cost, 2),
         recommended_daily_cost=round(data.recommended_daily_cost, 2),
         daily_saving=round(data.daily_saving, 2),
+        pv_energy_today=round(data.pv_energy_today, 2),
+        load_energy_today=round(data.load_energy_today, 2),
         slots=[_slot_view(a) for a in data.slot_assessments],
         recommendation=RecommendationView(
             reserve_target_soc=round(data.recommendation.reserve_target_soc, 1),

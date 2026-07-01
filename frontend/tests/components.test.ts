@@ -127,6 +127,8 @@ function dash(over: Partial<DashboardView> = {}): DashboardView {
     current_daily_cost: 0,
     recommended_daily_cost: 0,
     daily_saving: 0,
+    pv_energy_today: 6.2,
+    load_energy_today: 9.1,
     slots: [],
     recommendation: {
       reserve_target_soc: 40,
@@ -189,6 +191,46 @@ describe('LiveTiles battery flow + conversion', () => {
     const w = mount(LiveTiles, { props: { dashboard: dash({ battery_power: 0 }) } })
     expect(w.text().toLowerCase()).not.toContain('full in')
     expect(w.text().toLowerCase()).not.toContain('to reserve')
+  })
+
+  it('shows the live grid cost per hour (import kW × tariff)', () => {
+    // 1000 W import × R3.56/kWh = R3.56/h.
+    const w = mount(LiveTiles, {
+      props: { dashboard: dash({ grid_power: 1000, tariff_rate: 3.56 }) },
+    })
+    expect(w.text().toLowerCase()).toContain('grid cost now')
+    expect(w.text()).toContain('R3.56/h')
+  })
+
+  it('shows R0.00/h grid cost when exporting or off-grid', () => {
+    const w = mount(LiveTiles, { props: { dashboard: dash({ grid_power: -500 }) } })
+    expect(w.text()).toContain('R0.00/h')
+    expect(w.text().toLowerCase()).toContain('not buying')
+  })
+
+  it('shows self-sufficiency: 100% when nothing is drawn from the grid', () => {
+    const w = mount(LiveTiles, {
+      props: { dashboard: dash({ grid_power: 0, load_power: 800 }) },
+    })
+    expect(w.text().toLowerCase()).toContain('self-powered')
+    expect(w.text()).toContain('100%')
+  })
+
+  it('shows self-sufficiency below 100% when importing part of the load', () => {
+    // load 1000, grid import 400 -> 60% self-powered.
+    const w = mount(LiveTiles, {
+      props: { dashboard: dash({ grid_power: 400, load_power: 1000 }) },
+    })
+    expect(w.text()).toContain('60%')
+  })
+
+  it('shows energy generated and used so far today', () => {
+    const w = mount(LiveTiles, {
+      props: { dashboard: dash({ pv_energy_today: 12.6, load_energy_today: 9.4 }) },
+    })
+    expect(w.text().toLowerCase()).toContain('generated today')
+    expect(w.text()).toContain('12.6 kWh')
+    expect(w.text()).toContain('9.4 kWh')
   })
 
   it('shows a solar forecast tile with today and tomorrow', () => {

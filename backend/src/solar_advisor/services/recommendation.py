@@ -3,8 +3,9 @@ from __future__ import annotations
 
 import calendar
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta, tzinfo
 from typing import Protocol
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from solar_advisor.config import AppConfig
 from solar_advisor.domain.telemetry import Telemetry
@@ -51,11 +52,14 @@ class DashboardData:
     current_daily_cost: float
     recommended_daily_cost: float
     daily_saving: float
+    pv_energy_today: float
+    load_energy_today: float
     disclaimer: str
 
 
 class _Estimator(Protocol):  # structural protocol for the estimator dependency
     def estimate(self, start: datetime, end: datetime) -> EstimatedParameters: ...
+    def energy_since(self, start: datetime, end: datetime) -> tuple[float, float]: ...
 
 
 class RecommendationService:
@@ -169,6 +173,16 @@ class RecommendationService:
         )
         days_remaining = days_in_month - today.day + 1
         month_remaining_cost = rec.expected_daily_grid_import_kwh * days_remaining * derived.rate
+        try:
+            tz: tzinfo = ZoneInfo(cfg.timezone)
+        except (ZoneInfoNotFoundError, ValueError):
+            tz = UTC
+        local_midnight = telemetry.ts.astimezone(tz).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        pv_energy_today, load_energy_today = self._estimator.energy_since(
+            local_midnight.astimezone(UTC), telemetry.ts
+        )
         return DashboardData(
             telemetry=telemetry,
             objective=obj,
@@ -191,5 +205,7 @@ class RecommendationService:
             current_daily_cost=current_daily_cost,
             recommended_daily_cost=recommended_daily_cost,
             daily_saving=daily_saving,
+            pv_energy_today=pv_energy_today,
+            load_energy_today=load_energy_today,
             disclaimer=ADVISORY_DISCLAIMER,
         )

@@ -17,6 +17,9 @@ class _FakeEstimator:
     def estimate(self, start, end):
         return EstimatedParameters(15.0, 0.6, 20.0, 0.5)
 
+    def energy_since(self, start, end):
+        return (6.2, 9.1)
+
 
 class _FakeForecast:
     def fetch(self):

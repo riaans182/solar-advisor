@@ -29,6 +29,24 @@ def _store_with_discharge_cycle(tmp_path):
     return store, base
 
 
+def test_energy_since_deltas_from_cumulative_counters(tmp_path):
+    store = SqliteTelemetryStore(tmp_path / "t.db", min_interval=timedelta(0))
+    base = datetime(2026, 6, 20, 0, 0, 0)
+    store.save(make_telemetry(base, pv_energy=100.0, load_energy=200.0))
+    store.save(make_telemetry(base + timedelta(hours=6), pv_energy=106.2, load_energy=209.1))
+    est = ParameterEstimator(store, nominal_kwh=15.0)
+    pv, load = est.energy_since(base, base + timedelta(hours=6))
+    assert round(pv, 1) == 6.2
+    assert round(load, 1) == 9.1
+
+
+def test_energy_since_empty_window_is_zero(tmp_path):
+    store = SqliteTelemetryStore(tmp_path / "t2.db", min_interval=timedelta(0))
+    est = ParameterEstimator(store, nominal_kwh=15.0)
+    base = datetime(2026, 6, 20, 0, 0, 0)
+    assert est.energy_since(base, base + timedelta(hours=1)) == (0.0, 0.0)
+
+
 def test_estimates_usable_capacity_from_discharge_run(tmp_path):
     store, base = _store_with_discharge_cycle(tmp_path)
     est = ParameterEstimator(store, nominal_kwh=15.0)

@@ -24,6 +24,8 @@ const DASH = {
   current_daily_cost: 0,
   recommended_daily_cost: 0,
   daily_saving: 0,
+  pv_energy_today: 6.2,
+  load_energy_today: 9.1,
   slots: [
     {
       start: '00:00',

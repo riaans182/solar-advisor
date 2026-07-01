@@ -46,6 +46,19 @@ class ParameterEstimator:
             daily_consumption_confidence=daily_conf,
         )
 
+    def energy_since(self, start: datetime, end: datetime) -> tuple[float, float]:
+        """(pv_kwh, load_kwh) generated/consumed over [start, end], derived from the
+        cumulative meter counters (last minus first). Returns (0.0, 0.0) when the
+        window has no data. Negative deltas (a counter reset) are clamped to 0."""
+        rows = self._store.query_range(start, end)
+        if not rows:
+            return (0.0, 0.0)
+        first, last = rows[0], rows[-1]
+        return (
+            max(0.0, last.pv_energy - first.pv_energy),
+            max(0.0, last.load_energy - first.load_energy),
+        )
+
     def _estimate_capacity(self, rows: list[Telemetry]) -> tuple[float, float]:
         """Capacity = battery_energy_out delta over a single discharge run / fractional
         SOC drop. Estimates over the largest contiguous monotonically falling-SOC run

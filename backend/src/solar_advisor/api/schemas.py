@@ -73,6 +73,8 @@ class DashboardView(BaseModel):
     current_daily_cost: float
     recommended_daily_cost: float
     daily_saving: float
+    pv_energy_today: float
+    load_energy_today: float
     slots: list[SlotView]
     recommendation: RecommendationView
     disclaimer: str

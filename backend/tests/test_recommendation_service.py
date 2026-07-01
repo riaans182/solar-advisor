@@ -21,6 +21,9 @@ class _FakeEstimator:
             daily_consumption_confidence=0.5,
         )
 
+    def energy_since(self, start, end):
+        return (6.2, 9.1)
+
 
 class _ZeroConfidenceEstimator:
     """Mirrors the estimator's thin-history contract: daily consumption is 0.0
@@ -33,6 +36,9 @@ class _ZeroConfidenceEstimator:
             daily_consumption_kwh=0.0,
             daily_consumption_confidence=0.0,
         )
+
+    def energy_since(self, start, end):
+        return (0.0, 0.0)
 
 
 class _FakeForecast:

@@ -55,6 +55,8 @@ def _dashboard_data():
         current_daily_cost=54.86,
         recommended_daily_cost=5.0,
         daily_saving=49.86,
+        pv_energy_today=6.2,
+        load_energy_today=9.1,
         disclaimer=ADVISORY_DISCLAIMER,
     )
 
