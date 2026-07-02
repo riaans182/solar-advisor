@@ -56,22 +56,27 @@ const selfSufficiencyTone = computed(() => {
 
 // Time-to-full (charging) or time-to-reserve (discharging), extrapolated from the
 // current battery power. Discharge runs down only to the inverter's SOC floor
-// (the cutoff), not to 0%. Blank when idle or when capacity is unknown.
+// (the cutoff), not to 0%. Blank when idle or when capacity is unknown. Trickle
+// flows and far-out projections are suppressed: extrapolating a few watts gives
+// absurd figures (hundreds of hours), which is noise, not information.
+const ETA_MIN_POWER_W = 50
+const ETA_MAX_HOURS = 24
 const eta = computed(() => {
   const p = props.dashboard.battery_power // W, + charging
   const soc = props.dashboard.battery_soc
   const cap = props.dashboard.usable_kwh
   const floor = props.dashboard.battery_soc_floor
-  if (cap <= 0) return ''
-  if (p > 1) {
+  if (cap <= 0 || Math.abs(p) < ETA_MIN_POWER_W) return ''
+  if (p > 0) {
     const kwh = ((100 - soc) / 100) * cap
-    return kwh <= 0 ? 'fully charged' : `full in ${formatDuration(kwh / (p / 1000))}`
+    if (kwh <= 0) return 'fully charged'
+    const hours = kwh / (p / 1000)
+    return hours > ETA_MAX_HOURS ? '' : `full in ${formatDuration(hours)}`
   }
-  if (p < -1) {
-    const kwh = ((soc - floor) / 100) * cap
-    return kwh <= 0 ? 'at reserve' : `${formatDuration(kwh / (-p / 1000))} to reserve`
-  }
-  return ''
+  const kwh = ((soc - floor) / 100) * cap
+  if (kwh <= 0) return 'at reserve'
+  const hours = kwh / (-p / 1000)
+  return hours > ETA_MAX_HOURS ? '' : `${formatDuration(hours)} to reserve`
 })
 </script>
 
@@ -144,24 +149,7 @@ const eta = computed(() => {
         <span class="tile__label">Grid</span>
       </header>
       <p class="tile__value">{{ formatPower(Math.abs(dashboard.grid_power)) }}</p>
-      <p class="tile__sub">{{ gridFlow.label }}</p>
-    </article>
-
-    <article class="tile" :data-tone="dashboard.grid_power > 0 ? 'warn' : 'good'">
-      <header class="tile__head">
-        <span class="tile__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
-            <path
-              d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-        </span>
-        <span class="tile__label">Grid cost now</span>
-      </header>
-      <p class="tile__value">{{ formatRand(gridCostPerHour) }}/h</p>
-      <p class="tile__sub">{{ dashboard.grid_power > 0 ? 'buying from grid' : 'not buying' }}</p>
+      <p class="tile__sub">{{ gridFlow.label }} · {{ formatRand(gridCostPerHour) }}/h</p>
     </article>
 
     <article class="tile" data-tone="neutral">
@@ -182,7 +170,7 @@ const eta = computed(() => {
         <span class="tile__label">Load</span>
       </header>
       <p class="tile__value">{{ formatPower(dashboard.load_power) }}</p>
-      <p class="tile__sub">household demand</p>
+      <p class="tile__sub">{{ formatKwh(dashboard.load_energy_today) }} used today</p>
     </article>
 
     <article class="tile" :data-tone="selfSufficiencyTone">
@@ -228,27 +216,13 @@ const eta = computed(() => {
             <path d="M12 9a3 3 0 0 0-3 3h6a3 3 0 0 0-3-3Z" />
           </svg>
         </span>
-        <span class="tile__label">Solar forecast</span>
-      </header>
-      <p class="tile__value">{{ formatKwh(dashboard.expected_pv_kwh_today) }}</p>
-      <p class="tile__sub">{{ formatKwh(dashboard.expected_pv_kwh_tomorrow) }} tomorrow</p>
-    </article>
-
-    <article class="tile" data-tone="solar">
-      <header class="tile__head">
-        <span class="tile__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
-            <circle cx="12" cy="12" r="4" />
-            <path
-              d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
-              stroke-linecap="round"
-            />
-          </svg>
-        </span>
-        <span class="tile__label">Generated today</span>
+        <span class="tile__label">Solar today</span>
       </header>
       <p class="tile__value">{{ formatKwh(dashboard.pv_energy_today) }}</p>
-      <p class="tile__sub">{{ formatKwh(dashboard.load_energy_today) }} used</p>
+      <p class="tile__sub">
+        forecast {{ formatKwh(dashboard.expected_pv_kwh_today) }} ·
+        {{ formatKwh(dashboard.expected_pv_kwh_tomorrow) }} tomorrow
+      </p>
     </article>
   </section>
 </template>

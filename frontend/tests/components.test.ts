@@ -193,19 +193,35 @@ describe('LiveTiles battery flow + conversion', () => {
     expect(w.text().toLowerCase()).not.toContain('to reserve')
   })
 
-  it('shows the live grid cost per hour (import kW × tariff)', () => {
+  it('hides the ETA for trickle battery flows (extrapolation would be absurd)', () => {
+    // -7 W against 6.75 kWh would read ~964h; treated as idle instead.
+    const w = mount(LiveTiles, {
+      props: { dashboard: dash({ battery_power: -7, battery_soc: 65, battery_soc_floor: 20 }) },
+    })
+    expect(w.text().toLowerCase()).not.toContain('to reserve')
+  })
+
+  it('hides ETAs projected more than a day out', () => {
+    // 65% -> 20% of 15 kWh = 6.75 kWh at 100 W -> 67.5h: suppressed as noise.
+    const w = mount(LiveTiles, {
+      props: { dashboard: dash({ battery_power: -100, battery_soc: 65, battery_soc_floor: 20 }) },
+    })
+    expect(w.text().toLowerCase()).not.toContain('to reserve')
+  })
+
+  it('shows the live grid cost per hour on the grid tile (import kW × tariff)', () => {
     // 1000 W import × R3.56/kWh = R3.56/h.
     const w = mount(LiveTiles, {
       props: { dashboard: dash({ grid_power: 1000, tariff_rate: 3.56 }) },
     })
-    expect(w.text().toLowerCase()).toContain('grid cost now')
+    expect(w.text().toLowerCase()).toContain('importing')
     expect(w.text()).toContain('R3.56/h')
   })
 
-  it('shows R0.00/h grid cost when exporting or off-grid', () => {
+  it('shows R0.00/h grid cost when exporting', () => {
     const w = mount(LiveTiles, { props: { dashboard: dash({ grid_power: -500 }) } })
     expect(w.text()).toContain('R0.00/h')
-    expect(w.text().toLowerCase()).toContain('not buying')
+    expect(w.text().toLowerCase()).toContain('exporting')
   })
 
   it('shows self-sufficiency: 100% when nothing is drawn from the grid', () => {
@@ -224,21 +240,26 @@ describe('LiveTiles battery flow + conversion', () => {
     expect(w.text()).toContain('60%')
   })
 
-  it('shows energy generated and used so far today', () => {
+  it('folds generation and forecast into one solar-today tile', () => {
     const w = mount(LiveTiles, {
-      props: { dashboard: dash({ pv_energy_today: 12.6, load_energy_today: 9.4 }) },
+      props: {
+        dashboard: dash({
+          pv_energy_today: 12.6,
+          expected_pv_kwh_today: 10.9,
+          expected_pv_kwh_tomorrow: 12.4,
+        }),
+      },
     })
-    expect(w.text().toLowerCase()).toContain('generated today')
+    expect(w.text().toLowerCase()).toContain('solar today')
     expect(w.text()).toContain('12.6 kWh')
-    expect(w.text()).toContain('9.4 kWh')
+    expect(w.text().toLowerCase()).toContain('forecast 10.9 kwh')
+    expect(w.text().toLowerCase()).toContain('tomorrow')
   })
 
-  it('shows a solar forecast tile with today and tomorrow', () => {
+  it('shows energy used today on the load tile', () => {
     const w = mount(LiveTiles, {
-      props: { dashboard: dash({ expected_pv_kwh_today: 10.9, expected_pv_kwh_tomorrow: 12.4 }) },
+      props: { dashboard: dash({ load_energy_today: 9.4 }) },
     })
-    expect(w.text().toLowerCase()).toContain('forecast')
-    expect(w.text()).toContain('10.9')
-    expect(w.text().toLowerCase()).toContain('tomorrow')
+    expect(w.text()).toContain('9.4 kWh used today')
   })
 })

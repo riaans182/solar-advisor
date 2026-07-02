@@ -66,9 +66,9 @@ it('embed mode (?embed=tiles) renders only the live tiles, no nav or masthead', 
   const w = mount(App)
   await flushPromises()
 
-  // The six live tiles are present...
+  // The live tiles are present...
   expect(w.text()).toContain('Battery')
-  expect(w.text()).toContain('Solar forecast')
+  expect(w.text()).toContain('Solar today')
   expect(w.text()).toContain('Conversion / idle')
 
   // ...but the chrome is gone: no primary nav, no Purchases tab, no masthead tagline.
