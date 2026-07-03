@@ -6,6 +6,7 @@ work-mode schedule over local MQTT, runs a **deterministic** optimisation engine
 the day, and uses an LLM **only** to explain the engine's output in plain language. It
 never writes to the inverter.
 
+[![CI](https://github.com/riaans182/solar-advisor/actions/workflows/ci.yml/badge.svg)](https://github.com/riaans182/solar-advisor/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 Python 3.12 · FastAPI · Vue 3 + TypeScript · Docker
 
