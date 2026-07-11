@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import calendar
+import threading
+import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta, tzinfo
 from typing import Protocol
@@ -73,12 +76,46 @@ class RecommendationService:
         forecast: ForecastProvider,
         tariff_provider: TariffProvider | None = None,
         purchases: PurchaseReader | None = None,
+        estimate_ttl_s: float = 300.0,
+        now: Callable[[], float] = time.monotonic,
     ) -> None:
         self._config = config
         self._estimator = estimator
         self._forecast = forecast
         self._tariff_provider = tariff_provider
         self._purchases = purchases
+        self._estimate_ttl_s = estimate_ttl_s
+        self._now = now
+        # Cache for the only build() work that reads raw telemetry from the store.
+        self._lock = threading.Lock()
+        self._estimate_cache: tuple[float, EstimatedParameters, float, float] | None = None
+
+    def _cached_estimates(self, telemetry: Telemetry) -> tuple[EstimatedParameters, float, float]:
+        """Usable capacity, daily consumption, and today's energy totals — the only
+        parts of build() that read raw telemetry from the store (a ~14-day and a
+        one-day range scan). They change slowly, so they're cached with a TTL.
+        Without it, every /api/dashboard poll loads tens of thousands of rows,
+        which pins the API's CPU and — under an always-on kiosk polling every few
+        seconds — piles requests up until the container runs out of memory. The
+        lock collapses a concurrent burst into a single recompute per window."""
+        with self._lock:
+            cached = self._estimate_cache
+            now = self._now()
+            if cached is not None and (now - cached[0]) < self._estimate_ttl_s:
+                return cached[1], cached[2], cached[3]
+            est = self._estimator.estimate(telemetry.ts - timedelta(days=14), telemetry.ts)
+            try:
+                tz: tzinfo = ZoneInfo(self._config.timezone)
+            except (ZoneInfoNotFoundError, ValueError):
+                tz = UTC
+            local_midnight = telemetry.ts.astimezone(tz).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+            pv_today, load_today = self._estimator.energy_since(
+                local_midnight.astimezone(UTC), telemetry.ts
+            )
+            self._estimate_cache = (now, est, pv_today, load_today)
+            return est, pv_today, load_today
 
     def build(self, state: LiveState, objective: float | None) -> DashboardData:
         if state.telemetry is None or state.schedule is None:
@@ -88,7 +125,7 @@ class RecommendationService:
         obj = cfg.objective_default if objective is None else min(1.0, max(0.0, objective))
         telemetry = state.telemetry
 
-        est = self._estimator.estimate(telemetry.ts - timedelta(days=14), telemetry.ts)
+        est, pv_energy_today, load_energy_today = self._cached_estimates(telemetry)
         usable_kwh = est.usable_kwh or cfg.battery_nominal_kwh
         daily_kwh = (
             est.daily_consumption_kwh
@@ -173,16 +210,6 @@ class RecommendationService:
         )
         days_remaining = days_in_month - today.day + 1
         month_remaining_cost = rec.expected_daily_grid_import_kwh * days_remaining * derived.rate
-        try:
-            tz: tzinfo = ZoneInfo(cfg.timezone)
-        except (ZoneInfoNotFoundError, ValueError):
-            tz = UTC
-        local_midnight = telemetry.ts.astimezone(tz).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
-        pv_energy_today, load_energy_today = self._estimator.energy_since(
-            local_midnight.astimezone(UTC), telemetry.ts
-        )
         return DashboardData(
             telemetry=telemetry,
             objective=obj,

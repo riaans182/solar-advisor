@@ -342,6 +342,7 @@ def create_production_app() -> FastAPI:
         forecast=forecast,
         tariff_provider=tariff_provider,
         purchases=purchase_store,
+        estimate_ttl_s=config.estimate_ttl_s,
     )
     explainer = Explainer(
         complete=anthropic_complete(config.explain_model, max_tokens=config.explain_max_tokens),

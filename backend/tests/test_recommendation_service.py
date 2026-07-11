@@ -86,6 +86,49 @@ def _live_state():
     return state
 
 
+class _CountingEstimator:
+    """Records how many times the store-reading methods are actually invoked."""
+
+    def __init__(self) -> None:
+        self.estimate_calls = 0
+        self.energy_calls = 0
+
+    def estimate(self, start, end):
+        self.estimate_calls += 1
+        return EstimatedParameters(15.0, 0.6, 20.0, 0.5)
+
+    def energy_since(self, start, end):
+        self.energy_calls += 1
+        return (6.2, 9.1)
+
+
+def test_estimate_reads_are_cached_within_ttl_and_refresh_after():
+    """The raw-telemetry reads (the expensive part) must run at most once per TTL
+    window, not once per build() call — that is what keeps an always-on poller
+    from pinning the API. Objective changes must NOT bust the cache."""
+    est = _CountingEstimator()
+    clock = {"t": 1000.0}
+    svc = RecommendationService(
+        config=_config(),
+        estimator=est,
+        forecast=_FakeForecast(),
+        estimate_ttl_s=300.0,
+        now=lambda: clock["t"],
+    )
+    state = _live_state()
+
+    svc.build(state, objective=0.5)
+    svc.build(state, objective=0.5)
+    svc.build(state, objective=1.0)  # different objective, still within TTL
+    assert est.estimate_calls == 1  # cached across polls
+    assert est.energy_calls == 1
+
+    clock["t"] += 301.0  # TTL elapsed
+    svc.build(state, objective=0.5)
+    assert est.estimate_calls == 2  # recomputed once the window expired
+    assert est.energy_calls == 2
+
+
 def test_build_dashboard_runs_engine():
     svc = RecommendationService(
         config=_config(),

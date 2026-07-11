@@ -35,11 +35,15 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?set in .env}
       SA_EXPLAIN_MODEL: ${SA_EXPLAIN_MODEL:-claude-haiku-4-5}
       SA_EXPLAIN_ENABLED: ${SA_EXPLAIN_ENABLED:-true}
+      SA_ESTIMATE_TTL_S: ${SA_ESTIMATE_TTL_S:-300}
     ports:
       - "8000:8000"
     volumes:
       - sa_data:/data
     restart: unless-stopped
+    # Guardrail: if the API ever spikes again, it OOM-restarts instead of taking
+    # the whole host down. Comfortable headroom over its steady-state footprint.
+    mem_limit: 512m
 
   web:
     # The compose file lives in backend/, so the frontend build context is ../frontend.
