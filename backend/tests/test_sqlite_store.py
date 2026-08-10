@@ -1,4 +1,5 @@
 # tests/test_sqlite_store.py
+import sqlite3
 from datetime import date, datetime, timedelta
 
 import pytest
@@ -118,3 +119,39 @@ def test_prune_does_not_touch_purchases(tmp_path):
     assert removed == 1  # the old telemetry row was deleted
     assert tstore.query_range(datetime(2025, 1, 1), datetime(2027, 1, 1)) == []
     assert len(pstore.list_all()) == 1  # the purchase survived the prune
+
+
+def test_write_survives_a_concurrent_reader_in_another_connection(tmp_path):
+    """A separate process reading must not kill the collector's write.
+
+    The collector and the API are separate containers sharing one database file
+    on a volume, so sqlite3's in-process serialisation does not apply between
+    them. Under the default rollback journal a reader holds a SHARED lock that
+    blocks the writer's EXCLUSIVE lock, and with no busy timeout ``save`` raises
+    ``OperationalError: database is locked`` straight away -- which crash-looped
+    the collector 299 times in production before this was fixed.
+    """
+    db = tmp_path / "t.db"
+    writer = SqliteTelemetryStore(db, min_interval=timedelta(0))
+    writer.save(make_telemetry(datetime(2026, 6, 22, 8, 0, 0)))
+
+    reader = sqlite3.connect(str(db))
+    try:
+        reader.execute("BEGIN")  # hold a read transaction open across the write
+        reader.execute("SELECT COUNT(*) FROM telemetry").fetchone()
+        assert writer.save(make_telemetry(datetime(2026, 6, 22, 8, 0, 30))) is True
+    finally:
+        reader.close()
+
+
+def test_stores_open_the_database_in_wal_mode(tmp_path):
+    """WAL is what makes the reader above harmless, so assert it explicitly.
+
+    It is a persistent property of the file, so checking either store is enough
+    to prove both got it -- but both are checked, because a future store added
+    without the shared helper is exactly the regression this guards.
+    """
+    db = tmp_path / "t.db"
+    for store in (SqliteTelemetryStore(db), SqlitePurchaseStore(db)):
+        mode = store._conn.execute("PRAGMA journal_mode").fetchone()[0]
+        assert mode.lower() == "wal"

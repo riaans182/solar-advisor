@@ -1,12 +1,12 @@
 # src/solar_advisor/storage/purchase_store.py
 from __future__ import annotations
 
-import sqlite3
 from datetime import date
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from solar_advisor.domain.purchase import Purchase
+from solar_advisor.storage.connection import connect
 
 
 @runtime_checkable
@@ -24,16 +24,21 @@ class SqlitePurchaseStore:
     This is the app's only write target besides telemetry, and it is NOT the
     inverter — writing purchases here does not relax the read-only-against-the-
     inverter invariant (no MQTT publish path is added). It shares the telemetry
-    database file via its own connection; manual entry makes writes rare, so lock
-    contention with the telemetry collector is negligible. check_same_thread=False
-    lets the FastAPI threadpool serve reads/writes (sqlite3 serialises internally).
+    database file via its own connection, opened through storage.connection.
+
+    This docstring used to claim lock contention with the collector was
+    "negligible" because manual entry makes purchase writes rare. That was the
+    wrong variable: the contention was never purchase *writes*, it was this
+    process *reading* at all. Under the default rollback journal a reader blocks a
+    writer, so ordinary history queries from the API were killing the collector's
+    commits. See storage.connection.
 
     ISO date strings sort lexicographically in chronological order, so range
     comparisons (``purchased_at >= ?``) and ``ORDER BY`` work directly on the text.
     """
 
     def __init__(self, path: Path | str) -> None:
-        self._conn = sqlite3.connect(str(path), check_same_thread=False)
+        self._conn = connect(path)
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS purchases ("
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "

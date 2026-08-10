@@ -1,12 +1,12 @@
 # src/solar_advisor/storage/sqlite_store.py
 from __future__ import annotations
 
-import sqlite3
 from dataclasses import asdict, fields
 from datetime import datetime, timedelta
 from pathlib import Path
 
 from solar_advisor.domain.telemetry import Telemetry
+from solar_advisor.storage.connection import connect
 
 _FIELDS = [f.name for f in fields(Telemetry) if f.name != "ts"]
 
@@ -22,11 +22,15 @@ class SqliteTelemetryStore:
     """
 
     def __init__(self, path: Path | str, min_interval: timedelta = timedelta(seconds=10)) -> None:
-        # check_same_thread=False so the read-only API request path (served from a
-        # threadpool by uvicorn/TestClient) can call query_range on the same store the
-        # async collector writes to. sqlite3 serialises access internally; writes come
-        # only from the single collector thread, the API only reads.
-        self._conn = sqlite3.connect(str(path), check_same_thread=False)
+        # Opened via storage.connection so the WAL + busy-timeout settings that make
+        # cross-PROCESS access safe are applied. This used to call sqlite3.connect
+        # directly, reasoning that "sqlite3 serialises access internally; writes come
+        # only from the single collector thread, the API only reads" — true inside one
+        # process, and false in production, where the collector and the API are
+        # separate containers on one file. The API merely reading history was enough
+        # to make this store's next commit raise `database is locked`, which
+        # crash-looped the collector 299 times.
+        self._conn = connect(path)
         self._min_interval = min_interval
         self._last_saved_ts: datetime | None = None
         columns = ", ".join(f"{name} REAL" for name in _FIELDS)
