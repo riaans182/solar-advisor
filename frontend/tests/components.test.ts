@@ -1,5 +1,5 @@
 // tests/components.test.ts
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ScheduleTable from '../src/components/ScheduleTable.vue'
 import ObjectiveSlider from '../src/components/ObjectiveSlider.vue'
@@ -261,5 +261,109 @@ describe('LiveTiles battery flow + conversion', () => {
       props: { dashboard: dash({ load_energy_today: 9.4 }) },
     })
     expect(w.text()).toContain('9.4 kWh used today')
+  })
+})
+
+describe('LiveTiles grid-cutover ETA', () => {
+  // The inverter falls back to grid at the active slot's capacity setpoint, well
+  // above the 20% floor the reserve ETA counts down to. These fix the clock at
+  // 22:00 so the slot that wraps past midnight is the active one — that wrap is
+  // the case the range test has to special-case.
+  const eveningSlots: SlotView[] = [
+    {
+      start: '18:00',
+      end: '21:30',
+      target_soc: 75,
+      grid_charge: false,
+      behavior: 'discharging',
+      end_soc: 75,
+      grid_import_kwh: 0,
+      cost: 0,
+    },
+    {
+      start: '21:30',
+      end: '00:00',
+      target_soc: 65,
+      grid_charge: false,
+      behavior: 'discharging',
+      end_soc: 65,
+      grid_import_kwh: 0,
+      cost: 0,
+    },
+  ]
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 7, 10, 22, 0, 0)) // 22:00 local -> the wrapping slot
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('counts down to the active slot setpoint, not the reserve floor', () => {
+    // 78% -> 65% of 15 kWh = 1.95 kWh at 1500 W -> 1h 18m.
+    const w = mount(LiveTiles, {
+      props: {
+        dashboard: dash({
+          battery_power: -1500,
+          battery_soc: 78,
+          usable_kwh: 15,
+          battery_soc_floor: 20,
+          slots: eveningSlots,
+        }),
+      },
+    })
+    expect(w.text()).toContain('1h 18m')
+    expect(w.text().toLowerCase()).toContain('to grid')
+    expect(w.text()).toContain('65%')
+  })
+
+  it('still shows the reserve ETA underneath, and the grid one first', () => {
+    const w = mount(LiveTiles, {
+      props: {
+        dashboard: dash({
+          battery_power: -1500,
+          battery_soc: 78,
+          usable_kwh: 15,
+          battery_soc_floor: 20,
+          slots: eveningSlots,
+        }),
+      },
+    })
+    const text = w.text()
+    expect(text.toLowerCase()).toContain('reserve')
+    // Grid cutover always happens before the reserve floor, so it must read first.
+    expect(text.indexOf('to grid')).toBeLessThan(text.toLowerCase().indexOf('reserve'))
+  })
+
+  it('reports sitting at the setpoint rather than a negative countdown', () => {
+    const w = mount(LiveTiles, {
+      props: {
+        dashboard: dash({
+          battery_power: -1500,
+          battery_soc: 65,
+          usable_kwh: 15,
+          slots: eveningSlots,
+        }),
+      },
+    })
+    expect(w.text().toLowerCase()).toContain('grid setpoint')
+  })
+
+  it('shows no grid ETA while charging', () => {
+    const w = mount(LiveTiles, {
+      props: {
+        dashboard: dash({ battery_power: 1500, battery_soc: 78, slots: eveningSlots }),
+      },
+    })
+    expect(w.text().toLowerCase()).not.toContain('to grid')
+  })
+
+  it('shows no grid ETA when the schedule has not loaded', () => {
+    const w = mount(LiveTiles, {
+      props: { dashboard: dash({ battery_power: -1500, battery_soc: 78, slots: [] }) },
+    })
+    expect(w.text().toLowerCase()).not.toContain('to grid')
   })
 })

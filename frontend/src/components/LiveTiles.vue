@@ -78,6 +78,50 @@ const eta = computed(() => {
   const hours = kwh / (-p / 1000)
   return hours > ETA_MAX_HOURS ? '' : `${formatDuration(hours)} to reserve`
 })
+
+// The TOU slot covering right now. Slot 6 wraps past midnight, so its start is
+// later than its end and the range test has to flip for it.
+const currentSlot = computed(() => {
+  const toMinutes = (hhmm: string) => {
+    const [h, m] = hhmm.split(':').map(Number)
+    return h * 60 + m
+  }
+  const now = new Date()
+  const mins = now.getHours() * 60 + now.getMinutes()
+  return (
+    props.dashboard.slots.find((s) => {
+      const start = toMinutes(s.start)
+      const end = toMinutes(s.end)
+      return start <= end ? mins >= start && mins < end : mins >= start || mins < end
+    }) ?? null
+  )
+})
+
+// When the house moves back onto grid power, which is NOT the reserve ETA above.
+// The inverter stops discharging at the active slot's capacity setpoint (65% in
+// the overnight slots here, 75% in the evening one) and switches to grid there —
+// long before the 20% cutoff. So the reserve figure is a hypothetical the
+// schedule normally pre-empts, and this is the one that says when you start
+// paying. Shown first for that reason: it is always the earlier of the two, and
+// a pair of countdowns listed out of order reads as a bug.
+//
+// Slot boundaries are deliberately not walked. If the projection crosses into a
+// slot with a different setpoint this is approximate — the same order of
+// approximation as extrapolating instantaneous battery power across hours, which
+// every ETA in this tile already does.
+const gridEta = computed(() => {
+  const p = props.dashboard.battery_power
+  const soc = props.dashboard.battery_soc
+  const cap = props.dashboard.usable_kwh
+  const slot = currentSlot.value
+  if (!slot || cap <= 0 || p > -ETA_MIN_POWER_W) return ''
+  const target = slot.target_soc
+  if (soc <= target) return `at ${formatPercent(target)} grid setpoint`
+  const hours = (((soc - target) / 100) * cap) / (-p / 1000)
+  return hours > ETA_MAX_HOURS
+    ? ''
+    : `${formatDuration(hours)} to grid · ${formatPercent(target)}`
+})
 </script>
 
 <template>
@@ -105,7 +149,8 @@ const eta = computed(() => {
       <div class="tile__bar" aria-hidden="true">
         <span :style="{ width: Math.min(100, Math.max(0, dashboard.battery_soc)) + '%' }" />
       </div>
-      <p v-if="eta" class="tile__eta">{{ eta }}</p>
+      <p v-if="gridEta" class="tile__eta">{{ gridEta }}</p>
+      <p v-if="eta" class="tile__eta tile__eta--secondary">{{ eta }}</p>
     </article>
 
     <article class="tile" data-tone="solar">
@@ -310,6 +355,14 @@ const eta = computed(() => {
   font-weight: 600;
   color: var(--accent);
   font-variant-numeric: tabular-nums;
+}
+
+/* The reserve ETA sits under the grid one and is deliberately quieter: it is the
+   further-off event, and the one the schedule usually prevents from arriving. */
+.tile__eta--secondary {
+  margin-top: 0.15rem;
+  font-weight: 500;
+  color: var(--muted, #8b95a5);
 }
 
 .tile__bar {
