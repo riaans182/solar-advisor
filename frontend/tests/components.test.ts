@@ -155,10 +155,17 @@ describe('LiveTiles battery flow + conversion', () => {
     expect(w.text().toLowerCase()).toContain('discharging')
   })
 
-  it('renders a conversion tile clamped at 0 for negative residual', () => {
+  it('renders conversion under Load, clamped at 0 for a negative residual', () => {
     const w = mount(LiveTiles, { props: { dashboard: dash({ conversion_power: -12 }) } })
-    expect(w.text().toLowerCase()).toContain('conversion')
-    expect(w.text()).toContain('0 W')
+    expect(w.find('.tile__split').text().toLowerCase()).toContain('conversion / idle')
+    expect(w.find('.tile__split').text()).toContain('0 W')
+  })
+
+  it('carries no separate conversion tile', () => {
+    const w = mount(LiveTiles, { props: { dashboard: dash({ conversion_power: 90 }) } })
+    const labels = w.findAll('.tile__label').map((n) => n.text())
+    expect(labels).not.toContain('Conversion / idle')
+    expect(labels).toContain('Load')
   })
 
   it('shows a %/hour rate alongside the battery wattage', () => {

@@ -29,6 +29,10 @@ const batteryFlow = computed(() => {
   return 'idle'
 })
 
+// Inverter overhead and conversion losses: the residual between what comes in and
+// what the house actually draws. It rode on its own tile until it was folded under
+// Load as a sub-line — it is a component of the load reading, not a peer of it, and
+// a whole tile overstated a figure that is normally two digits.
 const conversion = computed(() => Math.max(0, Math.round(props.dashboard.conversion_power)))
 
 // Live rand-per-hour the grid is costing right now: imported kW × tariff. Zero
@@ -216,6 +220,7 @@ const gridEta = computed(() => {
       </header>
       <p class="tile__value">{{ formatPower(dashboard.load_power) }}</p>
       <p class="tile__sub">{{ formatKwh(dashboard.load_energy_today) }} used today</p>
+      <p class="tile__split">conversion / idle <b>{{ formatPower(conversion) }}</b></p>
     </article>
 
     <article class="tile" :data-tone="selfSufficiencyTone">
@@ -230,26 +235,6 @@ const gridEta = computed(() => {
       </header>
       <p class="tile__value">{{ formatPercent(selfSufficiency) }}</p>
       <p class="tile__sub">of load on solar + battery</p>
-    </article>
-
-    <article class="tile" data-tone="neutral">
-      <header class="tile__head">
-        <span class="tile__icon" aria-hidden="true">
-          <svg
-            viewBox="0 0 24 24"
-            width="18"
-            height="18"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-          >
-            <path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5" stroke-linejoin="round" />
-          </svg>
-        </span>
-        <span class="tile__label">Conversion / idle</span>
-      </header>
-      <p class="tile__value">{{ formatPower(conversion) }}</p>
-      <p class="tile__sub">inverter overhead + losses</p>
     </article>
 
     <article class="tile" data-tone="solar">
@@ -347,6 +332,22 @@ const gridEta = computed(() => {
   margin: 0;
   font-size: 0.8rem;
   color: var(--sa-text-dim, #9aa6b6);
+}
+
+/* A sub-caption under a caption, so it has to sit a step quieter again: dimmer
+   than .tile__sub, with only the number lifted back to the caption's colour.
+   Mirrors the am/pm string split under SOLAR on the wall display. */
+.tile__split {
+  margin: 0.15rem 0 0;
+  font-size: 0.72rem;
+  color: var(--sa-muted, #6b7689);
+  white-space: nowrap;
+}
+
+.tile__split b {
+  font-weight: 600;
+  color: var(--sa-text-dim, #9aa6b6);
+  font-variant-numeric: tabular-nums;
 }
 
 .tile__eta {

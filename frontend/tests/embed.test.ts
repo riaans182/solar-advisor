@@ -69,7 +69,7 @@ it('embed mode (?embed=tiles) renders only the live tiles, no nav or masthead', 
   // The live tiles are present...
   expect(w.text()).toContain('Battery')
   expect(w.text()).toContain('Solar today')
-  expect(w.text()).toContain('Conversion / idle')
+  expect(w.text()).toContain('conversion / idle') // now a sub-line under Load
 
   // ...but the chrome is gone: no primary nav, no Purchases tab, no masthead tagline.
   expect(w.find('nav.nav').exists()).toBe(false)
